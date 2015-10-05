@@ -1,0 +1,40 @@
+#########################################
+#
+# NAUGHTS AND CROSSES ROBOT AI EXPERIMENT
+#
+#########################################
+
+Goals:
+* Create game runner
+  - Process moves from two players
+  - Score each player (perhaps some combination of win/loss and number of turns)
+  - Run multiple games between two players and pick overall winner, overall score
+  - Extra features for driving a genetic robot
+    - Needs to create random variations and run games against them all, giving
+      them all a score. Ideally each bot will run multiple games and get an
+      average. Multiple games is only needed if the opponent uses variations of
+      play.
+    - Identify which particular variation is running, so that it can assign a
+      score, and also it knows what that variation means in order to produce
+      the next generation
+    - Produce next generation based on winning "design"
+    - Repeat several generations. This should be able to run completely
+      automated.
+
+
+* Create several known test bots
+  - Human bot (oxymoron?) - gets input from user.
+  - Random bot
+  - Perfect bot (never loses, may draw)
+  - Imperfect bot? (rarely loses)
+
+* Create genetic bot
+  - Perhaps several of them?
+  - Designed to be extendable at random
+  - Put genetic bot "DNA" in separate file, and give it a random unique code,
+    so that it is possible to run the same bot twice.
+  - Add separate bot generator (probably just a separate method)
+    - Should be able to create new bot from scratch, or extend existing bot.
+
+
+

@@ -67,26 +67,34 @@ class BOARD(object):
       newdata += self.data[pos+1:]
 
     if (len(newdata) != 9):
-      raise Exception("Invalid length! newdata is '%s'" % newdata)
+      raise Exception("Invalid length! newdata is '{}'".format(newdata))
 
     self.data = newdata
 
     return
 
-  def draw(self):
+  def show(self):
+
+    prefix = '  '
 
     i = 0
     for r in range(0,3):
-      print(" %s | %s | %s " % (self.getat(i), self.getat(i+1), self.getat(i+2)))
+      print(prefix + " {} | {} | {} ".
+            format(self.getat(i), self.getat(i+1), self.getat(i+2)))
+
       if (r < 2):
-        print("-----------")
+        print(prefix + "-----------")
 
       i += 3
 
-  def is_won(self):
+    print("\n")
+
+    return
+
+  def get_game_state(self):
     """
     Check if the current board has a win.
-    Returns 0 for no win, 1 for X win, 2 for O win.
+    Returns 0 for no win, 1 for X win, 2 for O win, 3 for draw/tie.
     """
     sequences = ['012',
                  '345',
@@ -109,4 +117,16 @@ class BOARD(object):
       elif (val == 'OOO'):
         return 2
 
+    is_draw = True
+    for pos in range(9):
+      val = self.getat(pos)
+      if (val != 'X' and val != 'O'):
+        is_draw = False
+
+    if (is_draw):
+      return 3
+
     return 0
+
+  def is_ended(self):
+    return self.get_game_state() != 0
