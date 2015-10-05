@@ -61,15 +61,16 @@ class BOARD(object):
     if (c != ' '):
       raise Exception("Invalid position! Already set!")
 
-    newdata = self.data[:pos] + turn
+    # Can't modify strings, so use a list instead.
+    newdata = list(self.data)
+    newdata[pos] = turn
 
-    if (pos < (len(self.data)-1)):
-      newdata += self.data[pos+1:]
+    newdata_str = ''.join(newdata)
 
-    if (len(newdata) != 9):
-      raise Exception("Invalid length! newdata is '{}'".format(newdata))
+    if (len(newdata_str) != 9):
+      raise Exception("Invalid length! newdata is '{}'".format(newdata_str))
 
-    self.data = newdata
+    self.data = newdata_str
 
     return
 
@@ -130,3 +131,59 @@ class BOARD(object):
 
   def is_ended(self):
     return self.get_game_state() != 0
+
+  ##########################################################
+  # HELPER METHODS for use in robots.
+  ##########################################################
+
+  def getat_multi(self, pos_str):
+    """
+    Return a string containing just the contents at the specified positions.
+    For example, if I pass in '012', it will return a string identifying the
+    contents of the top row.
+    """
+
+    contents = ''
+    for n in range(len(pos_str)):
+      contents += self.getat(int(pos_str[n]))
+
+    return contents
+
+  def get_rotated_board(self, rotations):
+    """
+    Return a copy of the board, rotated 90/180/270 degrees clockwise.
+    The number of rotations is 1 for 90 degrees, 2 for 180 degrees, and 3 for
+    270 degrees.
+    """
+
+    rotations = int(rotations) % 4
+
+    board_copy    = self.copy()
+    transform_map = '630741852'
+
+    # Minor optimisation. Don't do anything if we don't have to.
+    if (rotations == 0):
+      return board_copy
+
+    for rot_number in range(rotations):
+      orig_data = board_copy.data
+
+      new_data = list(orig_data)
+      for pos in range(len(transform_map)):
+        new_data[pos] = orig_data[int(transform_map[pos])]
+
+      board_copy.data = ''.join(new_data)
+
+    return board_copy
+
+  def get_first_empty_space(self, moves):
+    move_list = list(moves)
+
+    for move in move_list:
+      if (self.getat(int(move)) == ' '):
+        return int(move)
+
+    return -1
+
+
+
