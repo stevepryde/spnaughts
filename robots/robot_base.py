@@ -41,10 +41,10 @@ class Robot(object):
     """
     return 0
 
-  def process_result(self, result):
+  def process_result(self, status, score):
     """
-    result determines the outcome of the game.
-    result is a string which can be 'TIE', 'WIN' or 'LOSS'.
+    status is a string which can be 'TIE', 'WIN' or 'LOSS'.
+    The score is in the range -9 < x < 9
     """
     return
 

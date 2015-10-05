@@ -57,6 +57,8 @@ def run_one_game(robots):
   if (not BATCH_MODE):
     game.show()
 
+  num_turns = {'O':0,'X':0}
+
   while (not game.is_ended()):
 
     current_robot = robots[current_robot_id]
@@ -87,6 +89,8 @@ def run_one_game(robots):
 
     game.setat(move, identity)
 
+    num_turns[identity] += 1
+
     if (not BATCH_MODE):
       game.show()
 
@@ -100,23 +104,42 @@ def run_one_game(robots):
   if (result == 0):
     log_error("Game ended with invalid state of 0")
     quit()
-  elif (result == 1): # X wins
+
+  score_X = calculate_score(num_turns['X'], result == 1, result == 3)
+  score_O = calculate_score(num_turns['O'], result == 2, result == 3)
+
+  if (result == 1): # X wins
     log_info("Robot '{}' wins".format(robots[0].get_name()))
-    robots[0].process_result('WIN')
-    robots[1].process_result('LOSS')
+    robots[0].process_result('WIN', score_X)
+    robots[1].process_result('LOSS', score_O)
   elif (result == 2): # O wins
     log_info("Robot '{}' wins".format(robots[1].get_name()))
-    robots[0].process_result('LOSS')
-    robots[1].process_result('WIN')
+    robots[0].process_result('LOSS', score_X)
+    robots[1].process_result('WIN', score_O)
   elif (result == 3): # Tie
     log_info("It's a TIE")
-    robots[0].process_result('TIE')
-    robots[1].process_result('TIE')
+    robots[0].process_result('TIE', score_X)
+    robots[1].process_result('TIE', score_O)
   else:
     log_error("Game ended with invalid state ({})".format(result))
     quit()
 
-  return result
+  log_info("Scores: '{}':{:.2f} , '{}':{:.2f}".
+           format(robots[0].get_name(), score_X, robots[1].get_name(), score_O))
+
+  game_info = {'result':result,
+               'scores':{'X':score_X,'O':score_O}}
+  return game_info
+
+def calculate_score(num_turns, is_win, is_draw):
+  score = 10 - num_turns
+  if (not is_win):
+    if (is_draw):
+      score = 0
+    else:
+      score = -score
+
+  return score
 
 
 
@@ -180,9 +203,16 @@ if __name__ == '__main__':
 
   try:
     overall_results = {1:0,2:0,3:0}
+    num_games_played = 0
+    total_score = {'X':0,'O':0}
     for game_num in range(1, num_games + 1):
       log_info("\nRunning game {}\n".format(game_num))
-      result = run_one_game(robots)
+      game_info = run_one_game(robots)
+      result = game_info['result']
+
+      num_games_played += 1
+      total_score['X'] += game_info['scores']['X']
+      total_score['O'] += game_info['scores']['O']
 
       if (BATCH_MODE):
         if (result == 1):
@@ -215,6 +245,21 @@ if __name__ == '__main__':
       print("'{}' WINS: {}".format(robots[0].get_name(), overall_results[1]))
       print("'{}' WINS: {}".format(robots[1].get_name(), overall_results[2]))
       print("DRAW/TIE: {}".format(overall_results[3]))
+
+      # Get average scores.
+      if (num_games_played > 0):
+        avg_score_X = float(total_score['X'] / num_games_played)
+        avg_score_O = float(total_score['O'] / num_games_played)
+
+        print("")
+        log_info("\nAverage Scores: '{}':{:.2f} , '{}':{:.2f}".
+                 format(robots[0].get_name(), avg_score_X, robots[1].get_name(),
+                        avg_score_O))
+        print("AVERAGE SCORES:\n'{}':{:.2f}\n'{}':{:.2f}".
+              format(robots[0].get_name(), avg_score_X, robots[1].get_name(),
+                     avg_score_O))
+        print("")
+
 
   except KeyboardInterrupt:
     quit("Cancelled...")
