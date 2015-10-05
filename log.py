@@ -12,8 +12,8 @@ import logging
 # pip install rainbow_logging_handler.
 from rainbow_logging_handler import RainbowLoggingHandler
 
-DEBUG = 1
-TRACE = 1
+DEBUG = True
+TRACE = False
 
 DEFAULT_LOG_NAME = 'log'
 
