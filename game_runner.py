@@ -62,7 +62,8 @@ def run_one_game(robots):
     move = current_robot.do_turn(game)
     move = int(move)
 
-    print ("MOVE: {}\n".format(move))
+    log_info("'{}' chose move ({})".format(name, move))
+    print("")
 
     if (move < 0 or move > 8):
       log_error("Robot '{}' performed a move out of range ({})".

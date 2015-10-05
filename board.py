@@ -87,7 +87,7 @@ class BOARD(object):
 
       i += 3
 
-    print("\n")
+    print("")
 
     return
 
