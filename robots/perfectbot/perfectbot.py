@@ -1,6 +1,6 @@
-# randombot.py
+# perfectbot.py
 #
-# This bot just executes moves at random. It is a useful baseline.
+# This bot is designed never to lose, and also to win if it can. :)
 #
 # Features:
 # * If it can see an immediate win, it will go for it.
@@ -14,9 +14,6 @@
 #   thwart known 2WWs.
 # * If there are no known 2WWs on the board, it will fall through to the next
 #   available move from a pre-defined list in order of preference.
-#
-# This bot is designed never to lose, and also to win if it can. :)
-#
 #
 # TODO: There are potentially more win scenarios that this bot could attempt.
 #       Currently it only tries one of three.

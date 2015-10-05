@@ -209,11 +209,12 @@ if __name__ == '__main__':
         else:
           overall_results[result] += 1
 
-    # Print overall results.
-    print("\nRESULTS:")
-    print("'{}' WINS: {}".format(robots[0].get_name(), overall_results[1]))
-    print("'{}' WINS: {}".format(robots[1].get_name(), overall_results[2]))
-    print("DRAW/TIE: {}".format(overall_results[3]))
+    if (BATCH_MODE):
+      # Print overall results.
+      print("\nRESULTS:")
+      print("'{}' WINS: {}".format(robots[0].get_name(), overall_results[1]))
+      print("'{}' WINS: {}".format(robots[1].get_name(), overall_results[2]))
+      print("DRAW/TIE: {}".format(overall_results[3]))
 
   except KeyboardInterrupt:
     quit("Cancelled...")
