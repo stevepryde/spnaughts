@@ -179,6 +179,7 @@ if __name__ == '__main__':
   log_trace("Robot setup completed")
 
   try:
+    overall_results = {1:0,2:0,3:0}
     for game_num in range(1, num_games + 1):
       log_info("\nRunning game {}\n".format(game_num))
       result = run_one_game(robots)
@@ -200,7 +201,19 @@ if __name__ == '__main__':
           print("Game {}: TIE".format(game_num))
         else:
           print("Invalid result received: '{}'".format(result))
+          quit()
 
+        if (result not in overall_results):
+          print("No record of {} in overall_results".format(result))
+          quit()
+        else:
+          overall_results[result] += 1
+
+    # Print overall results.
+    print("\nRESULTS:")
+    print("'{}' WINS: {}".format(robots[0].get_name(), overall_results[1]))
+    print("'{}' WINS: {}".format(robots[1].get_name(), overall_results[2]))
+    print("DRAW/TIE: {}".format(overall_results[3]))
 
   except KeyboardInterrupt:
     quit("Cancelled...")
