@@ -17,9 +17,19 @@
 #
 # This bot is designed never to lose, and also to win if it can. :)
 #
+#
+# TODO: There are potentially more win scenarios that this bot could attempt.
+#       Currently it only tries one of three.
+#
+# To test this bot, run it against the randombot with:
+# --batch 1000 --stoponloss X
+#
+# This should be enough to detect any corner cases that slip through.
+#
 
 from robots.robot_base import Robot
 import random
+from log import *
 
 class PERFECTBOT(Robot):
   def setup(self):
@@ -76,27 +86,33 @@ class PERFECTBOT(Robot):
     # Offensive: Try to set up a 2-way win.
     if (not self.defensive):
       # Not in defensive mode. I have a limited time to set up a 2WW scenario.
-      print("I am in offensive mode")
+      self.log_debug("I am in offensive mode")
 
       if (self.scenario == 0):
         # Choose a 2WW scenario at random.
-        self.scenario = random.randint(1, 4)
+        self.scenario = random.randint(1, 3)
         self.scenario_rotation = random.randint(0, 3)
 
       # Try to set up the scenario in all 4 rotations, but prioritise the
       # current scenario rotation.
       # Also try all scenarios, but prioritise the current one.
       rotations = [self.scenario_rotation]
-      for n in range(4):
-        if (n not in rotations):
-          rotations.append(n)
+      # for n in range(4):
+      #   if (n not in rotations):
+      #     rotations.append(n)
 
       scenarios = [self.scenario]
-      for n in range(1,5):
-        if (n not in scenarios):
-          scenarios.append(n)
+      # TODO: I think it is probably dangerous to continue with a failed
+      #       offensive scenario. Perhaps it should try the initial scenario,
+      #       and if that fails, revert to defensive mode, and only after that
+      #       should it attempt another offensive scenario.
+      #
+      # for n in range(1,4):
+      #   if (n not in scenarios):
+      #     scenarios.append(n)
 
-      print("Trying scenario {} in rotation {}".format(self.scenario,self.scenario_rotation))
+      self.log_debug("Trying scenario {} in rotation {}".
+                     format(self.scenario,self.scenario_rotation))
 
       for scen in scenarios:
         for rotation in rotations:
@@ -144,29 +160,7 @@ class PERFECTBOT(Robot):
               return self.get_unrotated_move(move, rotation)
 
           elif (scen == 3):
-            # Scenario 3:
-            # TODO: does this scenario leave me vulnerable?
-            # Start with 1, then play 5, then 2.
-            #
-            # _X*
-            #  OX
-            #   _
-            if (their_identity in list(b.getat_multi('01258'))):
-              # They've blocked us.
-              continue
-
-            if (b.getat_multi('08') != '  '):
-              # Something's gone wrong with our plan.
-              continue
-
-            move = b.get_first_empty_space('152')
-            if (move >= 0):
-              self.scenario = scen
-              self.scenario_rotation = rotation
-              return self.get_unrotated_move(move, rotation)
-
-          elif (scen == 4):
-            # Scenario 4 is just scenario 2 mirrored:
+            # Scenario 3 is just scenario 2 mirrored:
             # X
             # _O
             # *X_
@@ -188,7 +182,7 @@ class PERFECTBOT(Robot):
       # and scanned all possible scenarios but none are left available to us.
 
     self.defensive = True
-    print("I am in defensive mode")
+    self.log_debug("I am in defensive mode")
     # Defensive: Avoid 2-way wins.
     for rotation in range(4):
       b = current_board.get_rotated_board(rotation)
@@ -198,7 +192,7 @@ class PERFECTBOT(Robot):
       # _O
       # *_X
       if (b.getat_multi('03678') == "{0}   {0}".format(their_identity)):
-        print("Prevent 2WW scenario 1")
+        self.log_debug("Prevent 2WW scenario 1")
         return self.get_unrotated_move(3, rotation)
 
       # Scenario 2:
@@ -206,7 +200,7 @@ class PERFECTBOT(Robot):
       #  OX
       #   _
       if (b.getat_multi('01258') == "{0}  {0} ".format(their_identity)):
-        print("Prevent 2WW scenario 2")
+        self.log_debug("Prevent 2WW scenario 2")
         return self.get_unrotated_move(2, rotation)
 
       # Scenario 2 in mirrored form:
@@ -214,32 +208,60 @@ class PERFECTBOT(Robot):
       # _O
       # *X_
       if (b.getat_multi('03678') == "{0}  {0} ".format(their_identity)):
-        print("Prevent mirrored 2WW scenario 2")
+        self.log_debug("Prevent mirrored 2WW scenario 2")
         return self.get_unrotated_move(6, rotation)
 
       # Scenario 3:
+      # NOTE: This scenario actually leaves the opponent vulnerable but we don't
+      #       currently exploit this. Ironically I think if we try to exploit it
+      #       we are left vulnerable instead.
       # Start with 1, then play 5, then 2.
       #
       # _X*
       #  OX
       #   _
       if (b.getat_multi('01258') == " {0} {0} ".format(their_identity)):
-        print("Prevent 2WW scenario 3")
+        self.log_debug("Prevent 2WW scenario 3")
         return self.get_unrotated_move(2, rotation)
 
-      # Pretty sure the above doesn't have a mirrored form.
+      # Scenario 4:
+      #
+      # X _
+      # _X
+      # * O
+      if (b.getat_multi('02346') == "{0}  {0} ".format(their_identity)):
+        self.log_debug("Prevent 2WW scenario 4")
+        # This scenario can go two ways, so cover both.
+        move = b.get_first_empty_space('62')
+        return self.get_unrotated_move(move, rotation)
+
+      # Scenario 4 mirrored:
+      #
+      # X_*
+      #  X
+      # _ O
+      if (b.getat_multi('01246') == "{0}  {0} ".format(their_identity)):
+        self.log_debug("Prevent mirrored 2WW scenario 4")
+        move = b.get_first_empty_space('26')
+        return self.get_unrotated_move(move, rotation)
 
       # TODO: DID I MISS ANY? It should be impossible to win here.
 
 
     # Otherwise pick the first move from a series of preferred moves.
-    print("Default move")
+    self.log_debug("Fall back to next move in preferred list")
     preferred_moves_str = '402681357'
     preferred_moves = list(preferred_moves_str)
     for move in preferred_moves:
-      if (move in moves):
+      if (int(move) in moves):
         return int(move)
 
+    print("MOVES contains: " + str(moves))
     # Shouldn't be here!
+    raise Exception("PERFECTBOT failed!")
 
     return random.choice(moves)
+
+  def log_debug(self, message):
+    log_debug("[PERFECTBOT]: " + message)
+    return

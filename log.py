@@ -25,15 +25,19 @@ COLOURS = {'trace'   : 'yellow',
            'critical': 'red'}
 
 
-def init_default_logger(logpath=''):
+def init_default_logger(logpath='', **kwargs):
   ts = str(datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S%f'))
   logfn = os.path.join(logpath, "logfile_" + ts + ".log")
 
-  init_logger(DEFAULT_LOG_NAME, logfn)
+  init_logger(DEFAULT_LOG_NAME, logfn, **kwargs)
 
   return
 
-def init_logger(name, logfn):
+def init_logger(name, logfn, **kwargs):
+
+  no_console = False
+  if ('no_console' in kwargs):
+    no_console = kwargs['no_console']
 
   # Create logger.
   logger = logging.getLogger(name)
@@ -43,25 +47,27 @@ def init_logger(name, logfn):
   fh = logging.FileHandler(logfn)
   fh.setLevel(logging.DEBUG)
 
-  # Create console handler with a higher log level.
-  ch = RainbowLoggingHandler(sys.stdout,
-                # Foreground colour, background colour, bold flag.
-                color_message_debug    = (COLOURS['debug'], 'None', False),
-                color_message_info     = (COLOURS['info'], 'None', False),
-                color_message_warning  = (COLOURS['warning'], 'None', False),
-                color_message_error    = (COLOURS['error'], 'None', True),
-                color_message_critical = (COLOURS['critical'], 'None', True))
-
-  ch.setLevel(logging.DEBUG)
   # Create formatter and add it to the handlers.
   formatter = \
     logging.Formatter(fmt='%(asctime)s %(name)s:%(levelname)s :: %(message)s',
                       datefmt='%m/%d/%Y %I:%M:%S %p')
+
   fh.setFormatter(formatter)
-  ch.setFormatter(formatter)
-  # Add the handlers to the logger.
   logger.addHandler(fh)
-  logger.addHandler(ch)
+
+  if (not no_console):
+    # Create console handler with a higher log level.
+    ch = RainbowLoggingHandler(sys.stdout,
+                  # Foreground colour, background colour, bold flag.
+                  color_message_debug    = (COLOURS['debug'], 'None', False),
+                  color_message_info     = (COLOURS['info'], 'None', False),
+                  color_message_warning  = (COLOURS['warning'], 'None', False),
+                  color_message_error    = (COLOURS['error'], 'None', True),
+                  color_message_critical = (COLOURS['critical'], 'None', True))
+
+    ch.setLevel(logging.DEBUG)
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
 
   return
 
