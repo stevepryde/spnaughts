@@ -23,6 +23,13 @@
 #
 # This should be enough to detect any corner cases that slip through.
 #
+# UPDATE:
+# It turns out that the 'perfectbot' is not perfect. It will never lose, but
+# is does not optimise its chances to win.
+#
+# See minimaxbot for the optimal solution, based on the minimax algorithm with
+# A-B optimisation.
+#
 
 from robots.robot_base import Robot
 import random

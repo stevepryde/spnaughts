@@ -63,7 +63,7 @@ class Robot(object):
 
     return possible
 
-  def get_sequence_info(self, current_board, sequence):
+  def get_sequence_info(self, _board, sequence):
     """
     Return info about the given sequence, in the form of 3 lists.
     The first list will be all positions matching my own identity.
@@ -77,7 +77,7 @@ class Robot(object):
 
     for n in range(len(sequence)):
       c = int(sequence[n])
-      val = current_board.getat(c)
+      val = _board.getat(c)
       if (val == self.get_identity()):
         ours.append(c)
       elif (val == ' '):
@@ -108,4 +108,11 @@ class Robot(object):
 
     return move
 
+  def get_opponent(self, me=None):
+    if (me == None):
+      me = self.get_identity()
 
+    if (me == 'X'):
+      return 'O'
+
+    return 'X'

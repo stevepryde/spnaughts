@@ -74,9 +74,11 @@ class BOARD(object):
 
     return
 
-  def show(self):
+  def show(self, indent=0):
 
     prefix = '  '
+    if (indent > 0):
+      prefix += ' ' * indent
 
     i = 0
     for r in range(0,3):
@@ -131,6 +133,30 @@ class BOARD(object):
 
   def is_ended(self):
     return self.get_game_state() != 0
+
+  def get_winner(self):
+    sequences = ['012',
+                 '345',
+                 '678',
+                 '036',
+                 '147',
+                 '258',
+                 '048',
+                 '246'
+                 ]
+
+    for seq in sequences:
+      val = ''
+      for n in range(len(seq)):
+        c = seq[n]
+        val += self.getat(int(c))
+
+      if (val == 'XXX'):
+        return 'X'
+      elif (val == 'OOO'):
+        return 'O'
+
+    return
 
   ##########################################################
   # HELPER METHODS for use in robots.
