@@ -54,5 +54,9 @@ Milestone reached at 2016-01-17
 
 Milestone reached at 2016-01-17
 
+* Is it possible to make the genetic runner do bidirectional runs, to allow
+  tuning a genetic bot in both directions in a single run??
+  Otherwise you end up with a genetic bot that is tuned for only one direction,
+  and it may fail in the other direction (as I have already witnessed).
 
 
