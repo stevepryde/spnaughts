@@ -1,16 +1,22 @@
 # genbot_control.py
 #
 #
-import os
-from robots.robot_base import Robot
-import random
-from log import *
-from robots.genbot1 import nodes
+import os, random
+from game.log import *
+from robots.genetic_robot_base import GeneticRobot
 
-class GENBOTCONTROL(Robot):
-  def create(self):
-
+class GENBOTCONTROL(GeneticRobot):
+  def create(self, config):
     return
+
+  def get_recipe(self):
+    return "BLAH"
+
+  def create_from_recipe(self, recipe):
+    return
+
+  def mutate_recipe(self, recipe):
+    return recipe
 
   def do_turn(self, current_board):
     moves = self.get_possible_moves(current_board)

@@ -19,7 +19,7 @@ class Robot(object):
     self.score = None
     return
 
-  def create(self):
+  def create(self, config):
     return
 
   def get_identity(self):

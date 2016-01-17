@@ -8,9 +8,9 @@
 # wins against randombot compared to other bots that likewise cannot lose.
 #
 
-from robots.robot_base import Robot
 import random
-from log import *
+from game.log import *
+from robots.robot_base import Robot
 
 class MINIMAXBOT(Robot):
   def setup(self):

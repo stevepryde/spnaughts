@@ -1,0 +1,13 @@
+######################################################
+#
+# NAUGHTS AND CROSSES ROBOT AI EXPERIMENT - STATISTICS
+#
+######################################################
+
+Highest score seen by genbot1 with batch size of 100:
+Score 6.75
+generations 10, samples 50, batch 100
+
+
+Highest score seen by genbot1 with batch size of 1000:
+

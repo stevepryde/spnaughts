@@ -16,6 +16,7 @@ DEBUG = True
 TRACE = False
 
 DEFAULT_LOG_NAME = 'log'
+LOG_BASE_PATH = ""
 
 COLOURS = {'trace'   : 'yellow',
            'debug'   : 'orange',
@@ -24,8 +25,8 @@ COLOURS = {'trace'   : 'yellow',
            'error'   : 'magenta',
            'critical': 'red'}
 
-
 def init_default_logger(logpath='', **kwargs):
+  LOG_BASE_PATH = logpath
   ts = str(datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S%f'))
   logfn = os.path.join(logpath, "logfile_" + ts + ".log")
 

@@ -38,13 +38,21 @@ Goals:
 
 Milestone reached at 2016-01-08
 
-TODO:
-
 * Performance improvements
   - Only write game log once after each game.
-  - Write each game log to a sub directory, rather than a single log file.
+  - Write each game log (batch?) to a sub directory, rather than a single log file.
     The log file shall be for diagnostics only
   - Create new class for running a single game, to make this easier to add
     game objects to a queue
   - Make game runs multi-threaded, and use a thread pool to run them.
+
+Milestone reached at 2016-01-17
+
+* Add ability to run single game against custom genetic bot (loaded from a file)
+* Add ability to start a genetic run based on a custom genetic bot (loaded from file)
+  - managed to implement this in the same change as above.
+
+Milestone reached at 2016-01-17
+
+
 

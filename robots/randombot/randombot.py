@@ -3,8 +3,8 @@
 # This bot just executes moves at random. It is a useful baseline.
 #
 
-from robots.robot_base import Robot
 import random
+from robots.robot_base import Robot
 
 class RANDOMBOT(Robot):
 

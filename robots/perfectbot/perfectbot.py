@@ -30,10 +30,14 @@
 # See minimaxbot for the optimal solution, based on the minimax algorithm with
 # A-B optimisation.
 #
+# Minimaxbot will win more games againts randombot than perfectbot will.
+#
 
-from robots.robot_base import Robot
 import random
-from log import *
+from game.log import *
+from robots.robot_base import Robot
+
+DEBUG=False
 
 class PERFECTBOT(Robot):
   def setup(self):
@@ -101,9 +105,9 @@ class PERFECTBOT(Robot):
       # current scenario rotation.
       # Also try all scenarios, but prioritise the current one.
       rotations = [self.scenario_rotation]
-      # for n in range(4):
-      #   if (n not in rotations):
-      #     rotations.append(n)
+      for n in range(4):
+        if (n not in rotations):
+          rotations.append(n)
 
       scenarios = [self.scenario]
       # TODO: I think it is probably dangerous to continue with a failed
@@ -267,5 +271,6 @@ class PERFECTBOT(Robot):
     return random.choice(moves)
 
   def log_debug(self, message):
-    log_debug("[PERFECTBOT]: " + message)
+    if (DEBUG):
+      log_debug("[PERFECTBOT]: " + message)
     return

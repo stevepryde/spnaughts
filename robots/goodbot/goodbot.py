@@ -4,9 +4,9 @@
 #
 #
 
-from robots.robot_base import Robot
 import random
-from log import *
+from game.log import *
+from robots.robot_base import Robot
 
 class GOODBOT(Robot):
   def setup(self):

@@ -78,36 +78,56 @@
 #   One wonders how many generations are needed to get close to a 'perfect' bot.
 # - Games run quite slowly for this sort of testing. I need to speed things up.
 #
+# ------
+#
+# - So I've managed to clean up the game runner code and implement
+#   multi-threading (using the multiprocesing module) - it runs a lot faster now.
 
-import os
-from robots.robot_base import Robot
-import random
-from log import *
+import os, random
+from game.log import *
+from robots.genetic_robot_base import GeneticRobot
 from robots.genbot1 import nodes
 
-class GENBOT1(Robot):
-  def __init__(self):
-    super(GENBOT1, self).__init__()
-
-    self.genetic = True
-    return
-
-  def create(self):
+class GENBOT1(GeneticRobot):
+  def create(self, config):
 
     # Create temp path if it doesn't exist.
     #self.get_temp_path()
     self.nodes = []
     self.output_nodes = []
 
-    self.create_brain()
+    self.initial_recipe = None
+    if (config['custom']):
+      params = config['custom'].split(',')
+      for param in params:
+        parts = param.split(':')
+        if (parts[0] == 'recipefile'):
+          recipefn = parts[1]
+          if (not os.path.exists(recipefn)):
+            log_error("Recipe file '{}' not found".format(recipefn))
+          else:
+            try:
+              with open(recipefn, 'rb') as rf:
+                self.initial_recipe = rf.read()
+
+              # Strip trailing newline chars.
+              self.initial_recipe = self.initial_recipe.decode('UTF8')
+              self.initial_recipe = self.initial_recipe.rstrip('\n')
+              self.log_debug("Loaded recipe from file '{}'".format(recipefn))
+            except OSError as e:
+              log_error("Error reading recipe from file '{}': {}".
+                        format(recipefn, str(e)))
+              return
+
+    if (self.initial_recipe):
+      self.create_from_recipe(self.initial_recipe)
+    else:
+      self.create_brain()
 
     return
 
-  def get_num_neurons(self):
-    return len(self.nodes)
-
   def create_brain(self):
-    self.log_debug('Creating brain')
+    self.log_trace('Creating brain')
 
     self.nodes = []
     self.output_nodes = []
@@ -186,12 +206,6 @@ class GENBOT1(Robot):
         node_index += 1
 
     return
-
-  def get_mutated_recipe(self, num_mutations):
-    recipe = self.get_recipe()
-    for n in range(num_mutations):
-      recipe = self.mutate_recipe(recipe)
-    return recipe
 
   def mutate_recipe(self, recipe):
     recipe_blocks = recipe.split(',')
@@ -297,7 +311,7 @@ class GENBOT1(Robot):
 
     # ENGAGE BRAIN
 
-    self.log_debug('Engaging brain')
+    self.log_trace('Engaging brain')
 
     # Populate input nodes with the current board state.
     i = 0
@@ -329,19 +343,19 @@ class GENBOT1(Robot):
 
       i += 1
 
-    self.log_debug('Input nodes are populated')
+    self.log_trace('Input nodes are populated')
 
     # Now process the brain.
     for index in range(i, len(self.nodes)):
       self.nodes[index].update()
 
-    self.log_debug('Brain has been processed')
+    self.log_trace('Brain has been processed')
 
     # And finally process the output nodes.
     for node in self.output_nodes:
       node.update()
 
-    self.log_debug('Output nodes have been processed')
+    self.log_trace('Output nodes have been processed')
 
     # Now sort moves according to the value of the output nodes.
     dsort = {}
@@ -370,4 +384,8 @@ class GENBOT1(Robot):
 
   def log_debug(self, message):
     log_debug("[GENBOT1]: " + message)
+    return
+
+  def log_trace(self, message):
+    log_trace("[GENBOT1]: " + message)
     return
