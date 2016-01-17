@@ -19,7 +19,7 @@
 #       Currently it only tries one of three.
 #
 # To test this bot, run it against the randombot with:
-# --batch 1000 --stoponloss X
+# --batch 10000 --stoponloss X
 #
 # This should be enough to detect any corner cases that slip through.
 #
@@ -105,9 +105,12 @@ class PERFECTBOT(Robot):
       # current scenario rotation.
       # Also try all scenarios, but prioritise the current one.
       rotations = [self.scenario_rotation]
-      for n in range(4):
-        if (n not in rotations):
-          rotations.append(n)
+      # TODO: See note below. It is dangerous to continue with a failed
+      #       offensive scenario. Once the initial scenario fails it should
+      #       immediately switch to defensive mode.
+      # for n in range(4):
+      #   if (n not in rotations):
+      #     rotations.append(n)
 
       scenarios = [self.scenario]
       # TODO: I think it is probably dangerous to continue with a failed
