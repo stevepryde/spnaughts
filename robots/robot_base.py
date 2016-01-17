@@ -6,10 +6,20 @@
 #
 # Robots can optionally implement setup() and process_result().
 
+import os
+
 class Robot(object):
   def __init__(self):
     self.identity = '' # This will be set to X or O.
     self.name     = '' # This will be set by the game runner.
+
+    # Temporary path where data may be stored. This is unique to this robot.
+    self.temppath = None
+    self.genetic = False
+    self.score = None
+    return
+
+  def create(self):
     return
 
   def get_identity(self):
@@ -30,6 +40,36 @@ class Robot(object):
 
   def set_name(self, _name):
     self.name = _name
+    return
+
+  def clear_score(self):
+    self.score = None
+    return
+
+  def set_score(self, _score):
+    self.score = _score
+    return
+
+  def get_score(self):
+    return self.score
+
+  def get_recipe(self):
+    return None
+
+  def create_from_recipe(self,recipe):
+    return
+
+  def get_temp_path (self):
+    assert(self.temppath != None)
+
+    if (not os.path.exists(self.temppath)):
+      os.makedirs(self.temppath)
+
+    return self.temppath
+
+  def set_temp_path_base(self, temppathbase):
+    lcname = str(self.__class__.__name__).lower()
+    self.temppath = os.path.join(temppathbase, lcname)
     return
 
   def setup(self):
@@ -116,3 +156,8 @@ class Robot(object):
       return 'O'
 
     return 'X'
+
+  def get_filename(self, _basename):
+    assert(self.temppath != None)
+
+    return os.path.join(self.temppath, _basename)

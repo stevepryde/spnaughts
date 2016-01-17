@@ -35,9 +35,9 @@ def init_default_logger(logpath='', **kwargs):
 
 def init_logger(name, logfn, **kwargs):
 
-  no_console = False
-  if ('no_console' in kwargs):
-    no_console = kwargs['no_console']
+  console_logging = False
+  if ('console_logging' in kwargs):
+    console_logging = kwargs['console_logging']
 
   # Create logger.
   logger = logging.getLogger(name)
@@ -55,7 +55,7 @@ def init_logger(name, logfn, **kwargs):
   fh.setFormatter(formatter)
   logger.addHandler(fh)
 
-  if (not no_console):
+  if (console_logging):
     # Create console handler with a higher log level.
     ch = RainbowLoggingHandler(sys.stdout,
                   # Foreground colour, background colour, bold flag.
