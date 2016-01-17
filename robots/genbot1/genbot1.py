@@ -1,9 +1,31 @@
+################################################################################
+# SP Naughts - Simple naughts and crosses game including a collection of AI bots
+# Copyright (C) 2015, 2016 Steve Pryde
+#
+# This file is part of SP Naughts.
+#
+# SP Naughts is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# SP Naughts is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with SP Naughts.  If not, see <http://www.gnu.org/licenses/>.
+################################################################################
 # genbot1.py
 #
-# The first attempt at a bot using a genetic algorithm to 'grow' it's own
-# "brain".
+# My first attempt at a bot using a genetic algorithm to 'grow' it's own
+# 'brain'.
 #
 # See nodes.py for some more details.
+#
+# High level description:
+# -----------------------
 #
 # Basically we start with manually populating 27 nodes. These are all 'fixed'
 # input nodes. The first 9 will be set to 1 for each blank space otherwise 0.
@@ -21,67 +43,49 @@
 #    favours lower-numbered nodes but does not enforce any set number of nodes
 #    at each level.
 #
-# Might need to experiment with either approach.
+# For now this bot only uses the second method.
+#
 # It would be good to use some standard notation to serialise the brain.
 # For example, if we assign a letter for each node type, then we can use the
 # following notation: AAAAAAAAAAAAAAAAAAAAB1B4C2,3C4,10D3,2 and so on.
+# (NOTE: for now, genbot1 uses the full node name, followed by a colon-separated
+# list of inputs)
+#
 # In this example, the 'A' node is the special input node, and 'B' node has only
-# a single input, which refers to the 'A' node at position 1. The second 'B' node
-# gets its input from position 4. The next node is a 'C' node, which takes inputs
-# from both position 2 and 3. Note that the later 'D' node can also accept input
-# from position 3 and 2. This allows more complex trees, and multiple paths can
-# do calculations based on the same input data.
+# a single input, which refers to the 'A' node at position 1. The second 'B'
+# node gets its input from position 4. The next node is a 'C' node, which takes
+# inputs from both position 2 and 3. Note that the later 'D' node can also
+# accept input from position 3 and 2. This allows more complex trees, and
+# multiple paths can do calculations based on the same input data.
 #
-# Using this approach, we then just grow the brain as much as we want. We need
-# to make sure we insert OUTPUT nodes throughout, and we need to make sure we
-# at least have an OUTPUT node for each position from 0-8. It would be good to
-# enforce the same number of OUTPUT nodes for each position, too.
+# Using this approach, we then just grow the brain as much as we want.
+# Output nodes are just special nodes with multiple inputs that are summed up
+# to give a value. Each output node corresponds to an available action. The
+# action taken is determined by the output node with the highest value.
 #
-# Once we have this, then it's just a matter of "running" the brain - which just
+# Once we have this, then it's just a matter of 'running' the brain - which just
 # means setting the values of all inputs, and then calling update() for every
-# node beyond that in order. Just walk the node list in sequence. The "tree"
+# node beyond that in order. Just walk the node list in sequence. The 'tree'
 # aspect will just sort itself out.
 #
-# When that's done, we just read off the outputs (these will have been incremented
-# during processing when each relevant output node was triggered), and choose
-# the valid output (i.e. only look for moves we can actually do) with the highest
-# value.
+# When that's done, we just read off the outputs, and choose the valid output
+# (i.e. only look for moves we can actually do) with the highest value.
 #
-# If there are two or more with equal value, just choose at random. Or if they're all 0,
-# perhaps we should discard this robot?
+# If there are two or more with equal value, just choose at random.
+# (Or if they're all 0, perhaps we should discard this robot?)
 #
-# The last stage after that is the higher level process of scoring each robot game
-# and feeding the score back into the system so that we can 'mutate' the best scoring
-# brains and start over. Mutations should be easy to do. We can just mutate any one
-# of the nodes in the list, or even just do a basic mutation on the "genetic" notation itself.
-# Mutating the genetics is nicer, because we can do funky things like insert or delete nodes
-# (which would throw everything off by 1) etc. This part might need some experimenting.
-# At the very least, we could rewire nodes easily.
+# The last stage after that is the higher level process of scoring each robot
+# game and feeding the score back into the system so that we can 'mutate' the
+# best scoring brains and start over. Mutations should be easy to do. We can
+# just mutate any one of the nodes in the list, or even just do a basic mutation
+# on the "genetic" notation itself. Mutating the genetics is nicer, because we
+# can do funky things like insert or delete nodes (which would throw everything
+# off by 1) etc. This part might need some experimenting.
 #
-# This is the point where things will get interesting, or not. It could all be
-# a flop. We won't know until we get to here. And even then it will probably be
-# difficult to debug. But there are ways to do it. Probably need to construct contrived
-# simple brains and step through it all. Won't that be fun.
+# At the very least, we could rewire nodes easily. This is what the bot does
+# currently.
 #
-# NOTES:
-# Completed implementation 2016-01-08.
-# Not seeing good results - probably because the scoring is too coarse, and
-# I don't have good bots to train against.
-# Perhaps I need to try this with a more complex "game".
 #
-# Update: 2016-01-17
-# - Using randombot as the first player and genbot1 as the second player,
-#   with batch size of 1000 and sample size of 100, I'm seeing more interesting
-#   results. The scores are more fine-grained.
-# - When compared with genbotcontrol, genbot1 consistently achieves higher
-#   scores. This tells me that some level of improvement has been achieved.
-#   One wonders how many generations are needed to get close to a 'perfect' bot.
-# - Games run quite slowly for this sort of testing. I need to speed things up.
-#
-# ------
-#
-# - So I've managed to clean up the game runner code and implement
-#   multi-threading (using the multiprocesing module) - it runs a lot faster now.
 
 import os, random
 from game.log import *

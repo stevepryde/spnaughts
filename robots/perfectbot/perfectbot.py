@@ -1,24 +1,43 @@
+################################################################################
+# SP Naughts - Simple naughts and crosses game including a collection of AI bots
+# Copyright (C) 2015, 2016 Steve Pryde
+#
+# This file is part of SP Naughts.
+#
+# SP Naughts is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# SP Naughts is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with SP Naughts.  If not, see <http://www.gnu.org/licenses/>.
+################################################################################
 # perfectbot.py
 #
-# This bot is designed never to lose, and also to win if it can. :)
+# This bot is designed never to lose, and also to win if it can.
 #
 # Features:
-# * If it can see an immediate win, it will go for it.
-# * If it can see a way to block an immediate win for the opponent, it will
+# - If it can see an immediate win, it will go for it.
+# - If it can see a way to block an immediate win for the opponent, it will
 #   block it (obviously it couldn't avoid a 2WW but it is designed never to
 #   face one)
-# * If it was the starting player, it will attempt to set up a 2WW.
+# - If it was the starting player, it will attempt to set up a 2WW.
 #   - If at any point it cannot see any further possible 2WWs, it will revert
 #     to defensive play.
-# * If it was not the starting player it will play defensively and attempt to
+# - If it was not the starting player it will play defensively and attempt to
 #   thwart known 2WWs.
-# * If there are no known 2WWs on the board, it will fall through to the next
+# - If there are no known 2WWs on the board, it will fall through to the next
 #   available move from a pre-defined list in order of preference.
 #
 # TODO: There are potentially more win scenarios that this bot could attempt.
 #       Currently it only tries one of three.
 #
-# To test this bot, run it against the randombot with:
+# To test this bot, run it against the randombot (in both directions) with:
 # --batch 10000 --stoponloss X
 #
 # This should be enough to detect any corner cases that slip through.
@@ -30,7 +49,11 @@
 # See minimaxbot for the optimal solution, based on the minimax algorithm with
 # A-B optimisation.
 #
-# Minimaxbot will win more games againts randombot than perfectbot will.
+# Neither perfectbot nor minimaxbot will lose any games against randombot, but
+# minimaxbot will win more games againts randombot than perfectbot will.
+#
+# Perfect bot is still very useful for training AI bots, and is much faster than
+# minimaxbot.
 #
 
 import random
@@ -105,7 +128,7 @@ class PERFECTBOT(Robot):
       # current scenario rotation.
       # Also try all scenarios, but prioritise the current one.
       rotations = [self.scenario_rotation]
-      # TODO: See note below. It is dangerous to continue with a failed
+      # TODO: See note below. It is risky to continue with a failed
       #       offensive scenario. Once the initial scenario fails it should
       #       immediately switch to defensive mode.
       # for n in range(4):
@@ -113,7 +136,7 @@ class PERFECTBOT(Robot):
       #     rotations.append(n)
 
       scenarios = [self.scenario]
-      # TODO: I think it is probably dangerous to continue with a failed
+      # TODO: I think it is probably risky to continue with a failed
       #       offensive scenario. Perhaps it should try the initial scenario,
       #       and if that fails, revert to defensive mode, and only after that
       #       should it attempt another offensive scenario.

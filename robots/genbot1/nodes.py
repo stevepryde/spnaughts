@@ -1,6 +1,29 @@
+################################################################################
+# SP Naughts - Simple naughts and crosses game including a collection of AI bots
+# Copyright (C) 2015, 2016 Steve Pryde
+#
+# This file is part of SP Naughts.
+#
+# SP Naughts is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# SP Naughts is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with SP Naughts.  If not, see <http://www.gnu.org/licenses/>.
+################################################################################
 # nodebase.py
 #
-# Base brain node class.
+# Brain node classes.
+#
+# These are basically all of the standard boolean logic operators.
+# The higher-level 'emergent' behaviour stems from combinations of these nodes.
+#
 
 from robots.genbot1.nodebase import NODEBASE, NODEBASE2
 
@@ -66,8 +89,8 @@ class NODE_XNOR(NODEBASE2):
 
 ##
 # The following node is just one idea for ways to generate an output node.
-# It is probably analogous to the below idea, and much simpler.
 # The more inputs, the more easily we can sort between outcomes.
+# The number of inputs should be at least the number of possible actions.
 class NODE_OUTPUT(NODEBASE):
   def __init__(self):
     super(NODE_OUTPUT, self).__init__()
@@ -80,15 +103,3 @@ class NODE_OUTPUT(NODEBASE):
       total += i
 
     return total
-
-
-##
-#
-# IDEA: set up a special "OUTPUT" node, which is a node that stores a value 0-8
-# and a callback. If it receives a 'true' signal, it calls the callback with that
-# value, otherwise it just returns the signal it receives.
-#
-# The robot can determine which move to make by choosing the move 0-8 that has the highest count.
-# That is, more output nodes for that position have fired than any others.
-# The robot would only check the values for the valid available moves, which it knows already.
-

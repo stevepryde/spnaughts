@@ -1,7 +1,27 @@
+################################################################################
+# SP Naughts - Simple naughts and crosses game including a collection of AI bots
+# Copyright (C) 2015, 2016 Steve Pryde
+#
+# This file is part of SP Naughts.
+#
+# SP Naughts is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# SP Naughts is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with SP Naughts.  If not, see <http://www.gnu.org/licenses/>.
+################################################################################
 # minimaxbot.py
 #
 # This bot will win if it can and avoid an obvious loss.
-# Otherwise it uses the minimax (actually, A-B) algorithm to determine next move.
+# Otherwise it uses the minimax (actually, A-B) algorithm to determine next
+# move.
 #
 # This is the optimal solution to the game. It will always pick an optimal game
 # plan, which results in not just a guaranteed win or tie, but also the most
@@ -104,7 +124,8 @@ class MINIMAXBOT(Robot):
       for move in moves:
         test_board = node_board.copy()
         test_board.setat(int(move), turn)
-        v = max(v, self.alphabeta(test_board, self.get_opponent(turn), alpha, beta, depth + 1))
+        v = max(v, self.alphabeta(test_board, self.get_opponent(turn),
+                alpha, beta, depth + 1))
         alpha = max(alpha, v)
         if (beta <= alpha):
           break
@@ -115,7 +136,8 @@ class MINIMAXBOT(Robot):
     for move in moves:
       test_board = node_board.copy()
       test_board.setat(int(move), turn)
-      v = min(v, self.alphabeta(test_board, self.get_opponent(turn), alpha, beta, depth + 1))
+      v = min(v, self.alphabeta(test_board, self.get_opponent(turn),
+              alpha, beta, depth + 1))
       beta = min(beta, v)
       if (beta <= alpha):
         break

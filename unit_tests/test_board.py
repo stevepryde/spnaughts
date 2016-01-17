@@ -1,9 +1,28 @@
 #!/usr/bin/env python
+################################################################################
+# SP Naughts - Simple naughts and crosses game including a collection of AI bots
+# Copyright (C) 2015, 2016 Steve Pryde
+#
+# This file is part of SP Naughts.
+#
+# SP Naughts is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# SP Naughts is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with SP Naughts.  If not, see <http://www.gnu.org/licenses/>.
+################################################################################
 
 import os,sys
 # NOTE: This relies on this script being run from the same directory it is in.
 sys.path.append(os.path.abspath('..'))
-import board
+import game.board as board
 from robots.robot_base import Robot
 
 def is_val(a, b, message):
@@ -43,6 +62,3 @@ if __name__ == '__main__':
   is_val(base_robot.get_unrotated_move(1, 3), 5, "get_unrotated_move(1) with 3 rotations")
   is_val(base_robot.get_unrotated_move(1, 2), 7, "get_unrotated_move(1) with 2 rotations")
   is_val(base_robot.get_unrotated_move(1, 1), 3, "get_unrotated_move(1) with 1 rotation")
-
-
-
