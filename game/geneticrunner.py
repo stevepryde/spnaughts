@@ -142,10 +142,9 @@ class GENETICRUNNER(GAMERUNNERBASE):
       genetic_index = 1
 
     # Add the first robot.
-    master_robot  = robots[genetic_index]
-    master_recipe = master_robot.get_recipe()
+    master_robots = [robots[genetic_index]]
 
-    genetic_robot_pool.append(master_robot)
+    genetic_robot_pool = list(master_robots)
 
     num_genetic_robots = 0
     for robot_obj in robots:
@@ -184,82 +183,102 @@ class GENETICRUNNER(GAMERUNNERBASE):
 
     gen_pool_index = 0
     highest_score = -100
+    baseline_score = -100
     for gen in range(config['num_generations']):
       self.log_genetic("Generation '{}':".format(str(gen)))
 
-      baseline_score = highest_score
+      batchqueue = multiprocessing.JoinableQueue()
+      threads = []
+      for wt in range(self.num_threads):
+        thr = BatchWorker(batchqueue)
+        thr.start()
+        threads.append(thr)
 
-      # Don't increment the generation number if the score wasn't exceeded.
-      while(highest_score == baseline_score):
-        batchqueue = multiprocessing.JoinableQueue()
-        threads = []
-        for wt in range(self.num_threads):
-          thr = BatchWorker(batchqueue)
-          thr.start()
-          threads.append(thr)
+      for s in range(len(genetic_robot_pool)):
+        robot_list = []
+        for index in [0, 1]:
+          if (index == genetic_index):
+            robot_list.append(genetic_robot_pool[s])
+          else:
+            robot_list.append(robots[index])
 
-        for s in range(len(genetic_robot_pool)):
-          robot_list = []
-          for index in [0, 1]:
-            if (index == genetic_index):
-              robot_list.append(genetic_robot_pool[s])
-            else:
-              robot_list.append(robots[index])
+        batch = game.batch.BATCH(config, robot_list)
+        batch.set_label("Gen {} - Sample {}".format(gen, s))
+        batch.set_batch_info({'generation':gen,
+                              'sample':s,
+                              'log_path':game_log_path})
+        batchqueue.put(batch)
 
-          batch = game.batch.BATCH(config, robot_list)
-          batch.set_label("Gen {} - Sample {}".format(gen, s))
-          batch.set_batch_info({'generation':gen,
-                                'sample':s,
-                                'log_path':game_log_path})
-          batchqueue.put(batch)
+      # Wait for all batches to process...
+      batchqueue.join()
 
-        # Wait for all batches to process...
-        batchqueue.join()
+      # Tell the threads to stop.
+      for wt in range(self.num_threads):
+        batchqueue.put(None)
 
-        # Tell the threads to stop.
-        for wt in range(self.num_threads):
-          batchqueue.put(None)
+      # Join threads and process scores.
+      scores = {}
+      for thr in threads:
+        thr.join()
+        scores.update(thr.get_scores())
 
-        # Join threads and process scores.
-        scores = {}
-        for thr in threads:
-          thr.join()
-          scores.update(thr.get_scores())
+      # First get a dict of just the score we want.
+      bot_scores = {}
+      for s in scores.keys():
+        score_list = scores[s]
+        _score     = score_list[genetic_index]
 
-        # Get highest score.
-        # TODO: is it worth sorting by score, and perhaps adding mutants based
-        #       on the top 5, say?
-        highest_scoring_sample = -1
-        for s in scores.keys():
-          score = scores[s]
-          if (score[genetic_index] > highest_score):
-            highest_score = score[genetic_index]
-            highest_scoring_sample = s
+        # Set the score in the robot object.
+        genetic_robot_pool[s].set_score(_score)
+        bot_scores[s] = _score
 
-        # Find the robot with the highest score, and create a new robot pool
-        # based on that one.
-        if (highest_scoring_sample < 0):
-          self.log_genetic("Highest score not found: '{}'".format(str(highest_score)))
-          self.log_genetic("Repeat with more samples...");
-        else:
-          self.log_genetic("Highest score was '{}'".format(str(highest_score)))
+      # Now sort the dict keys by value.
+      sorted_bot_indexes = sorted(bot_scores, key=bot_scores.get,
+                                  reverse=True)
 
-          master_robot = genetic_robot_pool[highest_scoring_sample]
-          master_recipe = master_robot.get_recipe()
+      keep = 1
+      if ('keep_samples' in config):
+        try:
+          keep = int(config['keep_samples'])
+          if (keep < 1):
+            keep = 1
+          elif (keep > len(sorted_bot_indexes)):
+            keep = len(sorted_bot_indexes)
+        except ValueError:
+          print("Bad number of samples specified ({}) - default to 1".
+                format(config['keep_samples']))
+          keep = 1
 
-          # Now scrap all robots and generate a new set from this master robot.
-          # Should log this robot's blueprint.
-          self.log_run("Generation '{}': Winning robot recipe is '{}'".
-                       format(gen, master_recipe))
+      i = 0
+      master_robots = []
+      for n in range(keep):
+        master_robots.append(genetic_robot_pool[sorted_bot_indexes[i]])
+        i += 1
 
-          if (highest_score >= MAX_SCORE):
-            self.log_genetic("Reached highest score: {}".format(highest_score))
-            self.log_run("Reached highest score: {}".format(highest_score))
-            return
+      highest_score = master_robots[0].get_score()
 
-        # Add the master robot to the list - it may well be better than its
-        # derivatives.
-        genetic_robot_pool = [master_robot]
+      self.log_genetic("Highest score was '{}'".format(str(highest_score)))
+
+      winning_recipe = master_robots[0].get_recipe()
+
+      # Should log this robot's blueprint.
+      self.log_run("Generation '{}': Winning robot recipe is '{}'".
+                   format(gen, winning_recipe))
+
+      if (highest_score >= MAX_SCORE):
+        self.log_genetic("Reached highest score: {}".format(highest_score))
+        self.log_run("Reached highest score: {}".format(highest_score))
+        return
+
+      # Add the master robots to the list - they may well be better than their
+      # derivatives.
+      #
+      # TODO: do we want num_samples * keep_samples? Or just num_samples overall?
+      genetic_robot_pool = []
+      for bot in master_robots:
+        genetic_robot_pool.append(bot)
+        master_recipe = bot.get_recipe()
+
         for s in range(1, config['num_samples']):
           robot_obj = manager.get_robot_object(genetic_robot_name)
           if (not robot_obj):

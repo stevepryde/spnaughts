@@ -60,6 +60,8 @@ def parse_config():
   parser.add_argument('--samples',
                       help='Number of samples per generation. ' +
                       '(Requires --batch)')
+  parser.add_argument('--keep',
+                      help='Number of winning samples to "keep"')
   parser.add_argument('--custom',
                       help='Custom argument (passed to bot)')
   args = parser.parse_args()
@@ -131,9 +133,16 @@ def parse_config():
           print("Number of samples (--samples) must be greater than 0")
           sys.exit(1)
 
+      if (args.keep):
+        config['keep_samples'] = args.keep
+
     else:
       if (args.samples):
         print("You specified --samples without --genetic")
+        sys.exit(1)
+
+      if (args.keep):
+        print("You specified --keep without --genetic")
         sys.exit(1)
 
   else:
