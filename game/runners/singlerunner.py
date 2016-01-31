@@ -22,7 +22,7 @@
 # Handle running of a single game.
 
 import datetime
-from game.gamerunnerbase import GAMERUNNERBASE
+from game.runners.gamerunnerbase import GAMERUNNERBASE
 from game.log import *
 import game.singlegame
 

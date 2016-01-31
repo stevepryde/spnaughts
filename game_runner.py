@@ -35,9 +35,7 @@ import random
 from game.log import *
 import game.board as board
 import game.robotmanager
-import game.geneticrunner
-import game.batchrunner
-import game.singlerunner
+from game.runners import singlerunner, batchrunner, geneticrunner
 
 # All system logs go here.
 LOG_BASE_PATH = 'logs'
@@ -59,11 +57,23 @@ def check_int1plus(value):
 
   return ivalue
 
+def check_int0plus(value):
+  try:
+    ivalue = int(value)
+    if (ivalue < 0):
+      raise argparse.ArgumentTypeError("Expected an int greater than zero, " +
+                                         "but got {}".format(ivalue))
+  except ValueError:
+    raise argparse.ArgumentTypeError("Expected an int, but got '{}'".
+                                     format(value))
+
+  return ivalue
+
 def parse_config():
   parser = argparse.ArgumentParser(description='Game Runner')
   parser.add_argument('robot1', help='First robot, e.g. "human"')
   parser.add_argument('robot2', help='Second robot')
-  parser.add_argument('--batch', type=check_int1plus,
+  parser.add_argument('--batch', type=check_int0plus,
                       help='Batch mode. Specify the number of games to run')
   parser.add_argument('--stoponloss',
                       help='Stop if the specified player loses')
@@ -83,7 +93,7 @@ def parse_config():
                              'disk space!)')
   args = parser.parse_args()
 
-  if (not args.robot1 and not args.robot2):
+  if (args.robot1 == None and args.robot2 == None):
     print("You need to specify two robots")
     sys.exit(1)
 
@@ -98,14 +108,14 @@ def parse_config():
                       'keep']
 
   args_dict = vars(args)
-  if (not args.batch):
+  if (args.batch == None):
     for req in requires_batch:
       if (req in args_dict and args_dict[req] is not None):
         print("ERROR: Option --{} requires --batch\n".format(req))
         parser.print_help()
         sys.exit(1)
 
-  if (not args.genetic):
+  if (args.genetic == None):
     for req in requires_genetic:
       if (req in args_dict and args_dict[req] is not None):
         print("ERROR: Option --{} requires --genetic\n".format(req))
@@ -122,12 +132,10 @@ def parse_config():
     config['stoponloss'] = args.stoponloss
 
   config['custom'] = None
-  if (args.custom):
+  if (args.custom != None):
     config['custom'] = args.custom
 
-  config['loggames'] = False
-  if (args.loggames):
-    config['loggames'] = True
+  config['loggames'] = args.loggames
 
   config['num_games']       = 1
   config['num_generations'] = 1
@@ -136,20 +144,20 @@ def parse_config():
   config['robot1'] = args.robot1
   config['robot2'] = args.robot2
 
-  if (args.batch):
+  if (args.batch != None):
     config['batch_mode'] = True
     config['silent']     = True
     config['num_games']  = int(args.batch)
 
-    if (args.genetic):
+    if (args.genetic != None):
       config['genetic_mode']     = True
       config['no_batch_summary'] = True
       config['num_generations']  = int(args.genetic)
 
-      if (args.samples):
+      if (args.samples != None):
         config['num_samples'] = int(args.samples)
 
-      if (args.keep):
+      if (args.keep != None):
         config['keep_samples'] = int(args.keep)
 
   return config
@@ -183,13 +191,13 @@ if __name__ == '__main__':
     runner = None
     if (config['genetic_mode']):
       log_info("Using GENETIC game runner")
-      runner = game.geneticrunner.GENETICRUNNER()
+      runner = geneticrunner.GENETICRUNNER()
     elif (config['batch_mode']):
       log_info("Using BATCH game runner")
-      runner = game.batchrunner.BATCHRUNNER()
+      runner = batchrunner.BATCHRUNNER()
     else:
       log_info("Using SINGLE game runner")
-      runner = game.singlerunner.SINGLERUNNER()
+      runner = singlerunner.SINGLERUNNER()
 
     runner.run(config, robots)
 

@@ -21,6 +21,7 @@
 #
 # Run a batch of games.
 
+import collections
 import game.singlegame
 from game.log import *
 
@@ -32,6 +33,10 @@ class BATCH(object):
     self.robots = robots
     self.label = ""
     self.batch_info = {}
+
+    # Init details used during the running of the batch:
+    self.start_batch()
+
     return
 
   def set_label(self, _label):
@@ -77,84 +82,165 @@ class BATCH(object):
     return
 
   def run_batch(self):
-    config = self.config
-    robots = self.robots
 
+    self.start_batch()
+
+    # Run the batch, either using the normal batch runner or the 'magic' one,
+    # depending on the 'num_games' setting.
+    if (self.config['num_games'] == 0):
+      self.run_magic_batch()
+    else:
+      self.run_normal_batch()
+
+    average_scores = self.process_batch_result()
+
+    return average_scores
+
+  def start_batch(self):
     # Run a single batch.
-    robots[0].clear_score()
-    robots[1].clear_score()
+    self.robots[0].clear_score()
+    self.robots[1].clear_score()
 
     # Setup robots.
-    robots[0].set_identity('X')
-    robots[1].set_identity('O')
+    self.robots[0].set_identity('X')
+    self.robots[1].set_identity('O')
 
-    overall_results = {1:0,2:0,3:0}
-    num_games_played = 0
-    total_score = {'X':0,'O':0}
-    for game_num in range(1, config['num_games'] + 1):
+    self.overall_results = {1:0,2:0,3:0}
+    self.num_games_played = 0
+    self.total_score = {'X':0,'O':0}
+
+    return
+
+  def process_game_result(self, game_num, game_info):
+    result = game_info['result']
+
+    self.num_games_played += 1
+    self.total_score['X'] += game_info['scores']['X']
+    self.total_score['O'] += game_info['scores']['O']
+
+    if (result == 1):
+      self.log_summary("Game {}: '{}' WINS".
+                       format(game_num, self.robots[0].get_name()))
+      if ('stoponloss' in self.config and self.config['stoponloss'] == 'O'):
+        self.log_summary("Stopping because O lost a game and " +
+                           "--stoponloss O was specified")
+        return
+    elif (result == 2):
+      self.log_summary("Game {}: '{}' WINS".
+                       format(game_num, self.robots[1].get_name()))
+      if ('stoponloss' in self.config and self.config['stoponloss'] == 'X'):
+        self.log_summary("Stopping because X lost a game and " +
+                           "--stoponloss X was specified")
+        return
+    elif (result == 3):
+      self.log_summary("Game {}: TIE".format(game_num))
+    else:
+      log_error("Invalid result received: '{}'".format(result))
+      return
+
+    if (result not in self.overall_results):
+      log_error("No record of {} in overall_results".format(result))
+      return
+    else:
+      self.overall_results[result] += 1
+
+    return
+
+  def process_batch_result(self):
+
+    # Print overall results.
+    self.log_summary("\nRESULTS:")
+    self.log_summary("Games Played: {}".format(self.num_games_played))
+    self.log_summary("")
+    self.log_summary("'{}' WINS: {}".format(self.robots[0].get_name(),
+                     self.overall_results[1]))
+    self.log_summary("'{}' WINS: {}".format(self.robots[1].get_name(),
+                     self.overall_results[2]))
+    self.log_summary("DRAW/TIE: {}".format(self.overall_results[3]))
+    self.log_summary("")
+
+    # Get average scores.
+    if (self.num_games_played > 0):
+      avg_score_X = float(self.total_score['X'] / self.num_games_played)
+      avg_score_O = float(self.total_score['O'] / self.num_games_played)
+
+      self.robots[0].set_score(avg_score_X)
+      self.robots[1].set_score(avg_score_O)
+
+      self.log_batch("\nAverage Scores: '{}':{:.2f} , '{}':{:.2f}".
+                     format(self.robots[0].get_name(), avg_score_X,
+                            self.robots[1].get_name(), avg_score_O))
+
+      self.log_summary("AVERAGE SCORES:\n'{}':{:.2f}\n'{}':{:.2f}".
+                       format(self.robots[0].get_name(), avg_score_X,
+                              self.robots[1].get_name(), avg_score_O))
+
+    return [avg_score_X, avg_score_O]
+
+  def run_normal_batch(self):
+    """
+    This is the normal batch runner that just runs a batch of n games.
+    """
+
+    for game_num in range(1, self.config['num_games'] + 1):
       self.log_batch("\n********** Running game {} **********\n".
                      format(game_num))
 
-      game_obj = game.singlegame.SINGLEGAME()
-      game_info = game_obj.run(config, robots)
+      game_obj  = game.singlegame.SINGLEGAME()
+      game_info = game_obj.run(self.config, self.robots)
       if (game_info == None):
         log_error("Game {} failed!".format(game_num))
         return
 
       game_log = game_obj.get_game_log()
       self.log_batch(game_log)
-      result = game_info['result']
 
-      num_games_played += 1
-      total_score['X'] += game_info['scores']['X']
-      total_score['O'] += game_info['scores']['O']
+      self.process_game_result(game_num, game_info)
 
-      if (result == 1):
-        self.log_summary("Game {}: '{}' WINS".
-                         format(game_num, robots[0].get_name()))
-        if ('stoponloss' in config and config['stoponloss'] == 'O'):
-          self.log_summary("Stopping because O lost a game and " +
-                             "--stoponloss O was specified")
-          return
-      elif (result == 2):
-        self.log_summary("Game {}: '{}' WINS".
-                         format(game_num, robots[1].get_name()))
-        if ('stoponloss' in config and config['stoponloss'] == 'X'):
-          self.log_summary("Stopping because X lost a game and " +
-                             "--stoponloss X was specified")
-          return
-      elif (result == 3):
-        self.log_summary("Game {}: TIE".format(game_num))
-      else:
-        log_error("Invalid result received: '{}'".format(result))
-        return
+    return
 
-      if (result not in overall_results):
-        log_error("No record of {} in overall_results".format(result))
-        return
-      else:
-        overall_results[result] += 1
+  def run_magic_batch(self):
+    """
+    This is a pseudo-batch that actually runs every possible combination of
+    moves against the target bot.
+    """
 
-    # Print overall results.
-    self.log_summary("\nRESULTS:")
-    self.log_summary("'{}' WINS: {}".format(robots[0].get_name(), overall_results[1]))
-    self.log_summary("'{}' WINS: {}".format(robots[1].get_name(), overall_results[2]))
-    self.log_summary("DRAW/TIE: {}".format(overall_results[3]))
+    game_num = 0
+    game_obj_initial = game.singlegame.SINGLEGAME()
+    game_obj_initial.start(self.config, self.robots)
 
-    # Get average scores.
-    if (num_games_played > 0):
-      avg_score_X = float(total_score['X'] / num_games_played)
-      avg_score_O = float(total_score['O'] / num_games_played)
+    game_queue = collections.deque()
+    game_queue.append(game_obj_initial)
 
-      robots[0].set_score(avg_score_X)
-      robots[1].set_score(avg_score_O)
+    try:
+      while(True):
+        game_obj  = game_queue.popleft()
+        new_games = game_obj.do_turn()
 
-      self.log_batch("\nAverage Scores: '{}':{:.2f} , '{}':{:.2f}".
-                     format(robots[0].get_name(), avg_score_X,
-                            robots[1].get_name(), avg_score_O))
+        if (len(new_games) == 0):
+          log_error("No cloned games returned from do_turn() when running " +
+                      "magic batch")
+          break
 
-      self.log_summary("AVERAGE SCORES:\n'{}':{:.2f}\n'{}':{:.2f}".
-                       format(robots[0].get_name(), avg_score_X,
-                              robots[1].get_name(), avg_score_O))
+        for new_game_obj in new_games:
+          if (new_game_obj.is_ended()):
+            # A game has finished, so process the result...
+            game_num += 1
+            game_info = new_game_obj.get_game_info()
+            if (game_info == None):
+              log_error("Game {} failed!".format(game_num))
+              return
 
-    return [avg_score_X, avg_score_O]
+            game_log = new_game_obj.get_game_log()
+            self.log_batch(game_log)
+
+            self.process_game_result(game_num, game_info)
+          else:
+            # This game has not yet finished, so add it to the end of the queue.
+            game_queue.append(new_game_obj)
+    except IndexError:
+      # All games should have been run to completion.
+      pass
+
+    return
+

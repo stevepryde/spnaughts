@@ -25,7 +25,7 @@ import os
 import datetime
 import random
 import multiprocessing
-from game.gamerunnerbase import GAMERUNNERBASE
+from game.runners.gamerunnerbase import GAMERUNNERBASE
 import game.robotmanager
 from game.log import *
 

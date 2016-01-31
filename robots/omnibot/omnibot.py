@@ -17,32 +17,31 @@
 # You should have received a copy of the GNU General Public License
 # along with SP Naughts.  If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
-# batchrunner.py
+# omnibot.py
 #
-# Game runner for running a single batch.
+# This bot is a special bot that will return a list of all available moves.
+#
+# This is designed to be used with --batch 0 to use the magic batch runner.
+# Basically, after each turn, the current game will be cloned, once for each
+# returned move. Each of those cloned games will be added to a queue. The
+# magic batch runner pops the first item off the left side of the queue and
+# processes the next turn. See the magic batch runner in game/batch.py for
+# more details.
+#
+#
 
-from game.gamerunnerbase import GAMERUNNERBASE
-import game.batch
 from game.log import *
+from robots.robot_base import Robot
 
-class BATCHRUNNER(GAMERUNNERBASE):
-  def run(self, config, robots):
-    # Set up log.
-    log_base_dir = config['log_base_dir']
+class OMNIBOT(Robot):
+  def setup(self):
+    return
 
-    robot_name0   = robots[0].name
-    robot_name1   = robots[1].name
+  def do_turn(self, current_board):
+    moves = self.get_possible_moves(current_board)
 
-    ts           = str(datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S%f'))
-    log_filename = os.path.join(log_base_dir, "single_batch_" + robot_name0 +
-                                "_" + robot_name1 + "_" + ts + ".log")
+    return moves
 
-    batch = game.batch.BATCH(config, robots)
-    batch.run_batch()
-
-    summary = batch.get_batch_summary()
-    print(summary)
-
-    batch.write_to_file(log_filename)
-
+  def log_debug(self, message):
+    log_debug("[OMNIBOT]: " + message)
     return
