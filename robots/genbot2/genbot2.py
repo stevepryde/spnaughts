@@ -32,9 +32,6 @@ from robots.genbot2 import nodes
 
 class GENBOT2(GeneticRobot):
   def create(self, config):
-
-    # Create temp path if it doesn't exist.
-    #self.get_temp_path()
     self.nodes = []
     self.output_nodes = []
 
@@ -275,20 +272,6 @@ class GENBOT2(GeneticRobot):
     return int(sorted_moves[0])
 
     # END OF BRAIN ENGAGEMENT
-
-    # # Otherwise pick the first move from a series of preferred moves.
-    # self.log_debug("Fall back to next move in preferred list")
-    # preferred_moves_str = '402681357'
-    # preferred_moves = list(preferred_moves_str)
-    # for move in preferred_moves:
-    #   if (int(move) in moves):
-    #     return int(move)
-
-    # print("MOVES contains: " + str(moves))
-    # # Shouldn't be here!
-    # raise Exception("GENBOT2 failed!")
-
-    # return random.choice(moves)
 
   def log_debug(self, message):
     log_debug("[GENBOT2]: " + message)
