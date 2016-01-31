@@ -46,24 +46,41 @@ def quit(message = 'Exiting...'):
   log_debug(message)
   sys.exit(1)
 
+
+def check_int1plus(value):
+  try:
+    ivalue = int(value)
+    if (ivalue <= 0):
+      raise argparse.ArgumentTypeError("Expected an int greater than one, " +
+                                         "but got {}".format(ivalue))
+  except ValueError:
+    raise argparse.ArgumentTypeError("Expected an int, but got '{}'".
+                                     format(value))
+
+  return ivalue
+
 def parse_config():
   parser = argparse.ArgumentParser(description='Game Runner')
   parser.add_argument('robot1', help='First robot, e.g. "human"')
   parser.add_argument('robot2', help='Second robot')
-  parser.add_argument('--batch',
+  parser.add_argument('--batch', type=check_int1plus,
                       help='Batch mode. Specify the number of games to run')
   parser.add_argument('--stoponloss',
                       help='Stop if the specified player loses')
-  parser.add_argument('--genetic',
-                      help='Genetic mode. Specify number of generations to run' +
-                      '(Requires --batch)')
-  parser.add_argument('--samples',
+  parser.add_argument('--genetic', type=check_int1plus,
+                      help='Genetic mode. Specify number of generations to ' +
+                      'run (Requires --batch)')
+  parser.add_argument('--samples', type=check_int1plus,
                       help='Number of samples per generation. ' +
-                      '(Requires --batch)')
-  parser.add_argument('--keep',
-                      help='Number of winning samples to "keep"')
+                      '(Requires --genetic)')
+  parser.add_argument('--keep', type=check_int1plus,
+                      help='Number of winning samples to "keep" ' +
+                      '(Requires --genetic)')
   parser.add_argument('--custom',
                       help='Custom argument (passed to bot)')
+  parser.add_argument('--loggames', action="store_true",
+                      help='Also log individual games (may require a lot of ' +
+                             'disk space!)')
   args = parser.parse_args()
 
   if (not args.robot1 and not args.robot2):
@@ -72,6 +89,30 @@ def parse_config():
 
   config = {}
 
+  # Check argument dependencies.
+  requires_batch = ['genetic',
+                    'samples',
+                    'keep']
+
+  requires_genetic = ['samples',
+                      'keep']
+
+  args_dict = vars(args)
+  if (not args.batch):
+    for req in requires_batch:
+      if (req in args_dict and args_dict[req] is not None):
+        print("ERROR: Option --{} requires --batch\n".format(req))
+        parser.print_help()
+        sys.exit(1)
+
+  if (not args.genetic):
+    for req in requires_genetic:
+      if (req in args_dict and args_dict[req] is not None):
+        print("ERROR: Option --{} requires --genetic\n".format(req))
+        parser.print_help()
+        sys.exit(1)
+
+  # Set the relevant config based on provided args.
   config['console_logging']  = True
   config['batch_mode']       = False
   config['genetic_mode']     = False
@@ -84,6 +125,10 @@ def parse_config():
   if (args.custom):
     config['custom'] = args.custom
 
+  config['loggames'] = False
+  if (args.loggames):
+    config['loggames'] = True
+
   config['num_games']       = 1
   config['num_generations'] = 1
   config['num_samples']     = 1
@@ -93,66 +138,19 @@ def parse_config():
 
   if (args.batch):
     config['batch_mode'] = True
-    #config['console_logging'] = False
-    config['silent'] = True
-
-    try:
-      config['num_games'] = int(args.batch)
-    except ValueError:
-      print("Number of games per batch (--batch) must be an int, but you specified '{}'".
-            format(str(args.batch)))
-      sys.exit(1)
-
-    if (config['num_games'] <= 0):
-      print("Number of games (--batch) must be greater than 0")
-      sys.exit(1)
+    config['silent']     = True
+    config['num_games']  = int(args.batch)
 
     if (args.genetic):
-      config['genetic_mode'] = True
+      config['genetic_mode']     = True
       config['no_batch_summary'] = True
-      try:
-        config['num_generations'] = int(args.genetic)
-      except ValueError:
-        print("Number of generations (--genetic) must be an int, but you specified '{}'".
-              format(str(args.genetic)))
-        sys.exit(1)
-
-      if (config['num_generations'] <= 0):
-        print("Number of generations (--genetic) must be greater than 0")
-        sys.exit(1)
+      config['num_generations']  = int(args.genetic)
 
       if (args.samples):
-        try:
-          config['num_samples'] = int(args.samples)
-        except ValueError:
-          print("Number of samples (--samples) must be an int, but you specified '{}'".
-                format(str(args.samples)))
-          sys.exit(1)
-
-        if (config['num_samples'] <= 0):
-          print("Number of samples (--samples) must be greater than 0")
-          sys.exit(1)
+        config['num_samples'] = int(args.samples)
 
       if (args.keep):
-        config['keep_samples'] = args.keep
-
-    else:
-      if (args.samples):
-        print("You specified --samples without --genetic")
-        sys.exit(1)
-
-      if (args.keep):
-        print("You specified --keep without --genetic")
-        sys.exit(1)
-
-  else:
-    if (args.genetic):
-      print("You specified --genetic without --batch")
-      sys.exit(1)
-
-    if (args.samples):
-      print("You specified --samples without --batch")
-      sys.exit(1)
+        config['keep_samples'] = int(args.keep)
 
   return config
 
