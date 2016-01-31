@@ -59,6 +59,23 @@ class BATCH(object):
     self.batch_summary_lines.append(message)
     return
 
+  def write_to_file(self, filename):
+    summary    = self.get_batch_summary()
+    log_output = self.get_batch_log()
+
+    try:
+      batch_log_file = open(filename, 'wb')
+      batch_log_file.write(bytes(summary, 'UTF8'))
+      batch_log_file.write(bytes("\n\nFULL LOG:\n", 'UTF8'))
+      batch_log_file.write(bytes(log_output, 'UTF8'))
+      batch_log_file.close()
+
+    except Exception as e:
+      log_error("Error writing batch log file '{}': {}".
+                format(filename, str(e)))
+
+    return
+
   def run_batch(self):
     config = self.config
     robots = self.robots

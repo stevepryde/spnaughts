@@ -46,6 +46,8 @@ class BatchWorker(multiprocessing.Process):
     try:
       while (True):
         batch = self.batchqueue.get()
+
+        # The game runner signals the end of the queue by enqueuing 'None'.
         if (batch is None):
           break
 
@@ -58,25 +60,18 @@ class BatchWorker(multiprocessing.Process):
         if (batchscores is not None):
           self.scores[sample] = batchscores
 
-        # Write batch log to a file.
-        gen_path = os.path.join(log_path, "Gen{}".format(gen))
-        sample_path = os.path.join(gen_path, "sample_{}_batch_log.log".
-                                   format(sample))
+        if (batch.config['loggames']):
+          # Write batch log to a file.
+          gen_path        = os.path.join(log_path, "Gen{}".format(gen))
+          sample_log_path = os.path.join(gen_path, "sample_{}_batch_log.log".
+                                         format(sample))
 
-        summary = batch.get_batch_summary()
-
-        # Write batch log to a file.
-        try:
-          os.makedirs(gen_path, exist_ok=True)
-          batch_log_file = open(sample_path, 'wb')
-          batch_log_file.write(bytes(summary, 'UTF8'))
-          batch_log_file.write(bytes("\n\nFULL LOG:\n", 'UTF8'))
-          batch_log_file.write(bytes(batch.get_batch_log(), 'UTF8'))
-          batch_log_file.close()
-
-        except OSError as e:
-          log_error("Error writing batch log file '{}': {}".
-                    format(sample_path, str(e)))
+          try:
+            os.makedirs(gen_path, exist_ok=True)
+            batch.write_to_file(sample_log_path)
+          except OSError as e:
+            log_error("Error creating batch log path '{}': {}".
+                      format(gen_path, str(e)))
 
         print("Completed batch for sample {}".format(sample))
         self.batchqueue.task_done()
@@ -238,16 +233,9 @@ class GENETICRUNNER(GAMERUNNERBASE):
 
       keep = 1
       if ('keep_samples' in config):
-        try:
-          keep = int(config['keep_samples'])
-          if (keep < 1):
-            keep = 1
-          elif (keep > len(sorted_bot_indexes)):
-            keep = len(sorted_bot_indexes)
-        except ValueError:
-          print("Bad number of samples specified ({}) - default to 1".
-                format(config['keep_samples']))
-          keep = 1
+        keep = int(config['keep_samples'])
+        if (keep > len(sorted_bot_indexes)):
+          keep = len(sorted_bot_indexes)
 
       i = 0
       master_robots = []
