@@ -55,6 +55,7 @@ class BatchWorker(multiprocessing.Process):
         sample   = info['sample']
         gen      = info['generation']
         log_path = info['log_path']
+        bot_index = info['index']
 
         batchscores = batch.run_batch()
         if (batchscores is not None):
@@ -73,7 +74,9 @@ class BatchWorker(multiprocessing.Process):
             log_error("Error creating batch log path '{}': {}".
                       format(gen_path, str(e)))
 
-        print("Completed batch for sample {}".format(sample))
+        print("Completed batch for sample {:5d} :: score = {:.3f}".
+              format(sample, batchscores[bot_index]))
+
         self.batchqueue.task_done()
     except KeyboardInterrupt:
       log_info("Cancelled")
@@ -83,6 +86,11 @@ class BatchWorker(multiprocessing.Process):
 
 class GENETICRUNNER(GAMERUNNERBASE):
   def __init__(self):
+    self.config = None
+    self.robots = None
+    self.genetic_robot_index = 0
+    self.standard_mutations = 50
+
     self.num_threads = multiprocessing.cpu_count() - 2
     if (self.num_threads < 1):
       self.num_threads = 1
@@ -106,82 +114,156 @@ class GENETICRUNNER(GAMERUNNERBASE):
 
     return
 
-  def run(self, config, robots):
-    # Set up log.
-    log_base_dir = config['log_base_dir']
+  def setup(self, config, robots):
+    self.config = config
+    self.robots = robots
+    self.genetic_index = 0
+    self.standard_mutations = 50
 
-    robot_name0   = robots[0].name
-    robot_name1   = robots[1].name
+    # Determine which robot is genetic.
+    if (not robots[0].genetic):
+      self.genetic_index = 1
+    elif (robots[1].genetic):
+      # Both robots are genetic - this is not allowed.
+      log_critical("GENETICRUNNER: Both robots are genetic. Only first bot " +
+                     "will use the genetic algorithm")
+      self.genetic_index = 0
+
+    # Store the name of the genetic robot. This is used to generate new ones.
+    self.genetic_name = self.robots[self.genetic_index].name
+
+    # Set up logging.
+    log_base_dir = self.config['log_base_dir']
 
     ts            = str(datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S%f'))
-    game_log_path = os.path.join(log_base_dir, "genetic_" + robot_name0 +
-                                 "_" + robot_name1 + "_" + ts)
+    self.game_log_path = os.path.join(log_base_dir,
+                                      "genetic_{}_{}_{}".
+                                      format(self.robots[0].name,
+                                             self.robots[1].name,
+                                             ts))
 
-    if (os.path.exists(game_log_path)):
-      log_critical("Path '{}' already exists!".format(game_log_path))
+    if (os.path.exists(self.game_log_path)):
+      log_critical("Path '{}' already exists!".format(self.game_log_path))
       return
 
     try:
-      os.mkdir(game_log_path)
+      os.mkdir(self.game_log_path)
     except Exception as e:
       log_critical("Error creating log directory '{}': {}".
-                   format(game_log_path, str(e)))
+                   format(self.game_log_path, str(e)))
       return
 
-    self.run_log_file = os.path.join(game_log_path, "genetic_run_log.log")
+    self.run_log_file = os.path.join(self.game_log_path, "genetic_run_log.log")
 
-    # Set up the genetic robot pool.
-    genetic_robot_pool = []
-    genetic_index = 0
-    if (not robots[0].genetic):
-      genetic_index = 1
+    return
 
-    # Add the first robot.
-    master_robots = [robots[genetic_index]]
-
-    genetic_robot_pool = list(master_robots)
-
-    num_genetic_robots = 0
-    for robot_obj in robots:
-      if (robot_obj.genetic):
-        num_genetic_robots += 1
-        genetic_robot_name = robot_obj.name
-
-    # In genetic mode, one and only one of the robots must be a genetic robot
-    if (num_genetic_robots < 1):
-      log_critical("One of the robots must be a genetic robot if " +
-                     "--genetic is supplied")
-      return
-    elif (num_genetic_robots > 1):
-      log_critical("Only one of the robots can be genetic if " +
-                     "--genetic is supplied")
-      return
-
-    assert(genetic_robot_name != None)
+  def generate_samples(self, input_samples, generation):
+    self.genetic_pool = []
 
     manager = game.robotmanager.ROBOTMANAGER()
 
-    # Remember we've already added the first sample.
-    # The first set of samples are all purely random.
-    for s in range(1, config['num_samples']):
-      robot_obj = manager.get_robot_object(genetic_robot_name)
-      if (not robot_obj):
-        log_critical("Error instantiating robot '{}'".format(robot_name))
-        return
+    if (input_samples != None and len(input_samples) > 0):
+      self.genetic_pool.extend(input_samples)
 
-      # Name it using the generation and sample number. This is generation 0.
-      robot_obj.set_name(genetic_robot_name + '-0-' + str(s))
-      robot_obj.create(config)
-      genetic_robot_pool.append(robot_obj)
+      for sample in input_samples:
+        sample_recipe = sample.get_recipe()
 
-    log_trace("Genetic robot pool has been set up")
+        # Experimental:
+        # If the sample had fewer mutations than the current standard,
+        # lower the standard number, and vice versa.
+        sample_mutations = sample.get_metadata('mutations')
+        if (sample_mutations == None):
+          sample_mutations = self.standard_mutations
 
-    gen_pool_index = 0
-    highest_score = -100
-    baseline_score = -100
+        self.standard_mutations += \
+          int((sample_mutations - self.standard_mutations) * 0.3)
+
+        if (self.standard_mutations < 1):
+          self.standard_mutations = 1
+
+        mutation_range = int(self.standard_mutations * 0.5)
+        min_mutations  = self.standard_mutations - int(mutation_range / 2.0)
+
+        if (min_mutations < 1):
+          min_mutations = 1
+
+        if (mutation_range < 2):
+          mutation_range = 2
+
+        for s in range(1, self.config['num_samples']):
+          robot_obj = manager.get_robot_object(self.genetic_name)
+
+          if (not robot_obj):
+            log_critical("Error instantiating robot '{}'".format(robot_name))
+            return
+
+          # Name it using the generation and sample number.
+          robot_obj.set_name("{}-{}-{}".
+                             format(self.genetic_name, generation, s))
+
+          # Mutate the recipe.
+          num_mutations = random.randint(min_mutations,
+                                         min_mutations + mutation_range)
+
+          mutated_recipe = sample_recipe
+          for n in range(num_mutations):
+            mutated_recipe = robot_obj.mutate_recipe(mutated_recipe)
+
+          robot_obj.create_from_recipe(mutated_recipe)
+          robot_obj.set_metadata('mutations', num_mutations)
+          self.genetic_pool.append(robot_obj)
+
+    else:
+      # Start from scratch, just create random robots.
+      # NOTE: The original robot is discarded (for convenience).
+      for s in range(1, self.config['num_samples'] + 1):
+        robot_obj = manager.get_robot_object(self.genetic_name)
+
+        if (not robot_obj):
+          log_critical("Error instantiating robot '{}'".format(robot_name))
+          return
+
+        # Name it using the generation and sample number. This is generation 0.
+        robot_obj.set_name("{}-{}-{}".
+                           format(self.genetic_name, generation, s))
+
+        robot_obj.create(self.config)
+        self.genetic_pool.append(robot_obj)
+
+    return
+
+  def select_samples(self, sorted_pool):
+    # TODO: allow custom selector, to test various selection criteria.
+
+    keep = 1
+    if ('keep_samples' in self.config):
+      keep = int(self.config['keep_samples'])
+      if (keep > len(sorted_pool)):
+        keep = len(sorted_pool)
+
+    # Get samples.
+    # For now, just get the top n scoring samples.
+    selected_samples = sorted_pool[:keep]
+
+    return selected_samples
+
+  def run(self, config, robots):
+    self.setup(config, robots)
+
+    if (not robots[self.genetic_index].genetic):
+      log_critical("GENETICRUNNER: Neither robot is a genetic robot!")
+      return
+
+    selected_samples = []
+
     for gen in range(config['num_generations']):
+      self.log_genetic("--------------------------")
       self.log_genetic("Generation '{}':".format(str(gen)))
 
+      # Set up the genetic robot pool.
+      self.generate_samples(selected_samples, gen)
+
+      # Set up the batch queue and worker threads.
       batchqueue = multiprocessing.JoinableQueue()
       threads = []
       for wt in range(self.num_threads):
@@ -189,19 +271,20 @@ class GENETICRUNNER(GAMERUNNERBASE):
         thr.start()
         threads.append(thr)
 
-      for s in range(len(genetic_robot_pool)):
+      for s in range(len(self.genetic_pool)):
         robot_list = []
         for index in [0, 1]:
-          if (index == genetic_index):
-            robot_list.append(genetic_robot_pool[s])
+          if (index == self.genetic_index):
+            robot_list.append(self.genetic_pool[s])
           else:
-            robot_list.append(robots[index])
+            robot_list.append(self.robots[index])
 
-        batch = game.batch.BATCH(config, robot_list)
+        batch = game.batch.BATCH(self.config, robot_list)
         batch.set_label("Gen {} - Sample {}".format(gen, s))
         batch.set_batch_info({'generation':gen,
                               'sample':s,
-                              'log_path':game_log_path})
+                              'log_path':self.game_log_path,
+                              'index':self.genetic_index})
         batchqueue.put(batch)
 
       # Wait for all batches to process...
@@ -221,68 +304,31 @@ class GENETICRUNNER(GAMERUNNERBASE):
       bot_scores = {}
       for s in scores.keys():
         score_list = scores[s]
-        _score     = score_list[genetic_index]
+        _score     = score_list[self.genetic_index]
 
         # Set the score in the robot object.
-        genetic_robot_pool[s].set_score(_score)
+        self.genetic_pool[s].set_score(_score)
         bot_scores[s] = _score
 
-      # Now sort the dict keys by value.
-      sorted_bot_indexes = sorted(bot_scores, key=bot_scores.get,
-                                  reverse=True)
+      # Sort the pool based on score, in descending order.
+      sorted_pool = sorted(self.genetic_pool, key=lambda bot: bot.get_score(),
+                           reverse=True)
 
-      keep = 1
-      if ('keep_samples' in config):
-        keep = int(config['keep_samples'])
-        if (keep > len(sorted_bot_indexes)):
-          keep = len(sorted_bot_indexes)
+      selected_samples = self.select_samples(sorted_pool)
 
-      i = 0
-      master_robots = []
-      for n in range(keep):
-        master_robots.append(genetic_robot_pool[sorted_bot_indexes[i]])
-        i += 1
+      selected_scores  = []
+      selected_recipes = []
+      for sample in selected_samples:
+        score = sample.get_score()
+        selected_scores.append("{:.3f}".format(score))
+        selected_recipes.append("[{:.3f}]: '{}'".format(score,
+                                                        sample.get_recipe()))
 
-      highest_score = master_robots[0].get_score()
+      self.log_genetic("Generation {} highest scores: [{}]".
+                       format(gen, ', '.join(selected_scores)))
 
-      self.log_genetic("Highest score was '{}'".format(str(highest_score)))
-
-      winning_recipe = master_robots[0].get_recipe()
-
-      # Should log this robot's blueprint.
-      self.log_run("Generation '{}': Winning robot recipe is '{}'".
-                   format(gen, winning_recipe))
-
-      if (highest_score >= MAX_SCORE):
-        self.log_genetic("Reached highest score: {}".format(highest_score))
-        self.log_run("Reached highest score: {}".format(highest_score))
-        return
-
-      # Add the master robots to the list - they may well be better than their
-      # derivatives.
-      #
-      # TODO: do we want num_samples * keep_samples? Or just num_samples overall?
-      genetic_robot_pool = []
-      for bot in master_robots:
-        genetic_robot_pool.append(bot)
-        master_recipe = bot.get_recipe()
-
-        for s in range(1, config['num_samples']):
-          robot_obj = manager.get_robot_object(genetic_robot_name)
-          if (not robot_obj):
-            log_critical("Error instantiating robot '{}'".format(robot_name))
-            return
-
-          # Name it using the generation and sample number.
-          robot_obj.set_name(genetic_robot_name + '-' + str(gen + 1) + '-' + str(s))
-
-          # Mutate the recipe
-          num_mutations = random.randint(1, 50)
-          mutated_recipe = master_recipe
-          for n in range(num_mutations):
-            mutated_recipe = robot_obj.mutate_recipe(mutated_recipe)
-
-          robot_obj.create_from_recipe(mutated_recipe)
-          genetic_robot_pool.append(robot_obj)
+      # Also log recipes of winning robots:
+      self.log_run("Generation '{}': Winning robot recipes:\n{}".
+                   format(gen, "\n".join(selected_recipes)))
 
     return

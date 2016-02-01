@@ -22,6 +22,7 @@
 # Manage creation of robots.
 
 import importlib
+from game.log import *
 
 # Path to robots.
 ROBOT_BASE_PATH = 'robots'

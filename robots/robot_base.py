@@ -36,6 +36,7 @@ class Robot(object):
     self.temppath = None
     self.genetic = False
     self.score = None
+    self.metadata = {}
     return
 
   def create(self, config):
@@ -71,6 +72,16 @@ class Robot(object):
 
   def get_score(self):
     return self.score
+
+  def set_metadata(self, key, value):
+    self.metadata[key] = value
+    return
+
+  def get_metadata(self, key):
+    if (key in self.metadata):
+      return self.metadata[key]
+
+    return
 
   def get_recipe(self):
     return None
