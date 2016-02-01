@@ -9,12 +9,31 @@ AI bots.
 
 Run games using game_runner.py:
 
-$ ./game_runner.py
+$ ./game_runner.py -h
 usage: game_runner.py [-h] [--batch BATCH] [--stoponloss STOPONLOSS]
-                      [--genetic GENETIC] [--samples SAMPLES]
-                      [--custom CUSTOM]
+                      [--genetic GENETIC] [--samples SAMPLES] [--keep KEEP]
+                      [--custom CUSTOM] [--loggames]
                       robot1 robot2
-game_runner.py: error: the following arguments are required: robot1, robot2
+
+Game Runner
+
+positional arguments:
+  robot1                First robot, e.g. "human"
+  robot2                Second robot
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --batch BATCH         Batch mode. Specify the number of games to run
+  --stoponloss STOPONLOSS
+                        Stop if the specified player loses
+  --genetic GENETIC     Genetic mode. Specify number of generations to run
+                        (Requires --batch)
+  --samples SAMPLES     Number of samples per generation. (Requires --genetic)
+  --keep KEEP           Number of winning samples to "keep" (Requires
+                        --genetic)
+  --custom CUSTOM       Custom argument (passed to bot)
+  --loggames            Also log individual games (may require a lot of disk
+                        space!)
 
 You need to specify two robots, followed by optional arguments.
 
