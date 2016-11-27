@@ -1,164 +1,209 @@
-################################################################################
-# SP Naughts - Simple naughts and crosses game including a collection of AI bots
-# Copyright (C) 2015, 2016 Steve Pryde
-#
-# This file is part of SP Naughts.
-#
-# SP Naughts is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# SP Naughts is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with SP Naughts.  If not, see <http://www.gnu.org/licenses/>.
-################################################################################
-# log.py
-#
-# Simple log handling.
+"""Module providing simple logging capabilities."""
 
-# Python 2/3 compatibility.
-from __future__ import unicode_literals
-from __future__ import print_function
-from builtins import dict, range, str, bytes
 
-import sys,os
+import collections
 import datetime
 import logging
+import os
+import sys
+
 
 # pip install rainbow_logging_handler.
 from rainbow_logging_handler import RainbowLoggingHandler
+
 
 DEBUG = True
 TRACE = False
 
 DEFAULT_LOG_NAME = 'log'
-LOG_BASE_PATH = ""
 
-COLOURS = {'trace'   : 'yellow',
-           'debug'   : 'orange',
-           'info'    : 'green',
-           'warning' : 'blue',
-           'error'   : 'magenta',
-           'critical': 'red'}
+COLOURS = {'trace': 'yellow',
+           'debug': 'orange',
+           'info': 'green',
+           'warning': 'blue',
+           'error': 'magenta',
+           'critical': 'red'
+          }
 
-def init_default_logger(logpath='', **kwargs):
-  LOG_BASE_PATH = logpath
-  ts = str(datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S%f'))
-  logfn = os.path.join(logpath, "logfile_" + ts + ".log")
 
-  init_logger(DEFAULT_LOG_NAME, logfn, **kwargs)
+def init_default_logger(logpath, **kwargs):
+    """Init default logger.
 
-  return
+    Args:
+        logpath: The base path for the log file.
+    """
 
-def init_logger(name, logfn, **kwargs):
+    ts = str(datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S%f'))
+    logfn = os.path.join(logpath, "logfile_" + ts + ".log")
+    init_logger(DEFAULT_LOG_NAME, logfn, **kwargs)
+    return
 
-  console_logging = False
-  if ('console_logging' in kwargs):
-    console_logging = kwargs['console_logging']
+def init_logger(name, logfn, console_logging=False):
+    """Init logger.
 
-  # Create logger.
-  logger = logging.getLogger(name)
-  logger.setLevel(logging.DEBUG)
+    Args:
+        name: The log name.
+        logfn: The filename for this log.
+        console_logging: True if the log should also log to the console.
 
-  # Create file handler which logs everything.
-  fh = logging.FileHandler(logfn)
-  fh.setLevel(logging.DEBUG)
+    """
 
-  # Create formatter and add it to the handlers.
-  formatter = \
-    logging.Formatter(fmt='%(asctime)s %(name)s:%(levelname)s :: %(message)s',
-                      datefmt='%m/%d/%Y %I:%M:%S %p')
+    # Create logger.
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
 
-  fh.setFormatter(formatter)
-  logger.addHandler(fh)
+    # Create file handler which logs everything.
+    fh = logging.FileHandler(logfn)
+    fh.setLevel(logging.DEBUG)
 
-  if (console_logging):
-    # Create console handler with a higher log level.
-    ch = RainbowLoggingHandler(sys.stdout,
-                  # Foreground colour, background colour, bold flag.
-                  color_message_debug    = (COLOURS['debug'], 'None', False),
-                  color_message_info     = (COLOURS['info'], 'None', False),
-                  color_message_warning  = (COLOURS['warning'], 'None', False),
-                  color_message_error    = (COLOURS['error'], 'None', True),
-                  color_message_critical = (COLOURS['critical'], 'None', True))
+    # Create formatter and add it to the handlers.
+    formatter = logging.Formatter(fmt='%(asctime)s %(name)s:%(levelname)s :: '
+                                      '%(message)s',
+                                  datefmt='%m/%d/%Y %I:%M:%S %p')
 
-    ch.setLevel(logging.DEBUG)
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
 
-  return
+    if (console_logging):
+        # Create console handler with a higher log level.
+        ch = RainbowLoggingHandler(sys.stdout,
+            # Foreground colour, background colour, bold flag.
+            color_message_debug=(COLOURS['debug'], 'None', False),
+            color_message_info=(COLOURS['info'], 'None', False),
+            color_message_warning=(COLOURS['warning'], 'None', False),
+            color_message_error=(COLOURS['error'], 'None', True),
+            color_message_critical=(COLOURS['critical'], 'None', True))
+
+        ch.setLevel(logging.DEBUG)
+        ch.setFormatter(formatter)
+        logger.addHandler(ch)
+
+    return
+
 
 def get_lines(text):
-  if (type(text) is not list):
-    text = [text]
+    """Convert the string (or list of strings) into a list of lines.
 
-  lines = []
-  for line in text:
-    line = line.rstrip()
-    sublines = line.split("\n")
-    for subline in sublines:
-      lines.append(subline)
+    Args:
+        text: String of text. May be a list of strings.
 
-  return lines
+    Returns:
+        List of lines, as strings.
+    """
 
-def write_log(text, log_name = DEFAULT_LOG_NAME):
-  lines = get_lines(text)
-  for line in lines:
-    log_info(line, log_name)
-  return
+    if (type(text) is not list):
+        text = [text]
 
-def log_info(text, log_name = DEFAULT_LOG_NAME):
-  logobj = logging.getLogger(log_name)
-  lines = get_lines(text)
-  for line in lines:
-    logobj.info(line)
-  return
+    lines = []
+    for line in text:
+        line = line.rstrip()
+        sublines = line.split("\n")
+        for subline in sublines:
+            lines.append(subline)
 
-def log_error(text, log_name = DEFAULT_LOG_NAME):
-  logobj = logging.getLogger(log_name)
-  lines = get_lines(text)
-  for line in lines:
-    logobj.error(line)
+    return lines
 
-  return
 
-def log_warning(text, log_name = DEFAULT_LOG_NAME):
-  logobj = logging.getLogger(log_name)
-  lines = get_lines(text)
-  for line in lines:
-    logobj.warning(line)
+def write_log(*args, **kwargs):
+    """Convenient alias for log_info()."""
+    log_info(*args, **kwargs)
+    return
 
-  return
 
-def log_debug(text, log_name = DEFAULT_LOG_NAME):
-  logobj = logging.getLogger(log_name)
-  lines = get_lines(text)
-  for line in lines:
-    logobj.debug(line)
-  return
+def log_info(text, log_name=DEFAULT_LOG_NAME):
+    """Write text to the log at INFO level.
 
-def log_trace(text, log_name = DEFAULT_LOG_NAME):
-  # Trace is the same as debug but only output when TRACE == 1 (see top of this
-  # module).
+    Args:
+        text: The text to write.
+        log_name: The name of the log.
 
-  if (TRACE):
+    """
     logobj = logging.getLogger(log_name)
     lines = get_lines(text)
     for line in lines:
-      logobj.debug(line)
+        logobj.info(line)
+    return
 
-  return
+
+def log_error(text, log_name=DEFAULT_LOG_NAME):
+    """Write text to the log at ERROR level.
+
+    Args:
+        text: The text to write.
+        log_name: The name of the log.
+
+    """
+    logobj = logging.getLogger(log_name)
+    lines = get_lines(text)
+    for line in lines:
+        logobj.error(line)
+
+    return
 
 
-def log_critical(text, log_name = DEFAULT_LOG_NAME):
-  logobj = logging.getLogger(log_name)
-  lines = get_lines(text)
-  for line in lines:
-    logobj.critical(line)
+def log_warning(text, log_name=DEFAULT_LOG_NAME):
+    """Write text to the log at WARNING level.
 
-  return
+    Args:
+        text: The text to write.
+        log_name: The name of the log.
+
+    """
+    logobj = logging.getLogger(log_name)
+    lines = get_lines(text)
+    for line in lines:
+        logobj.warning(line)
+
+    return
+
+
+def log_debug(text, log_name=DEFAULT_LOG_NAME):
+    """Write text to the log at DEBUG level.
+
+    Args:
+        text: The text to write.
+        log_name: The name of the log.
+
+    """
+    logobj = logging.getLogger(log_name)
+    lines = get_lines(text)
+    for line in lines:
+        logobj.debug(line)
+
+    return
+
+def log_trace(text, log_name=DEFAULT_LOG_NAME):
+    """Write text to the log at TRACE level.
+
+    Trace is the same as debug but is only output when TRACE is True.
+    See the constant at the top of this module.
+
+    Args:
+        text: The text to write.
+        log_name: The name of the log.
+
+    """
+
+    if (TRACE):
+        logobj = logging.getLogger(log_name)
+        lines = get_lines(text)
+        for line in lines:
+            logobj.debug(line)
+
+    return
+
+
+def log_critical(text, log_name=DEFAULT_LOG_NAME):
+    """Write text to the log at CRITICAL level.
+
+    Args:
+        text: The text to write.
+        log_name: The name of the log.
+
+    """
+    logobj = logging.getLogger(log_name)
+    lines = get_lines(text)
+    for line in lines:
+        logobj.critical(line)
+
+    return

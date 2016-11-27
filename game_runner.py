@@ -1,207 +1,208 @@
 #!/usr/bin/env python
-################################################################################
-# SP Naughts - Simple naughts and crosses game including a collection of AI bots
-# Copyright (C) 2015, 2016 Steve Pryde
-#
-# This file is part of SP Naughts.
-#
-# SP Naughts is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# SP Naughts is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with SP Naughts.  If not, see <http://www.gnu.org/licenses/>.
-################################################################################
-"""
-Simple naughts and crosses game for developing AI robots.
+"""Simple naughts and crosses game for developing AI bots."""
 
-The robot must derive from robot_base.py
-"""
-
-import sys
-import time
-import copy
 import argparse
-
-import traceback
+import os
 import random
+import sys
 
-from game.log import *
-import game.board as board
-import game.robotmanager
+from game.log import (init_default_logger, log_critical, log_debug, log_info,
+                      log_trace)
+from game.botmanager import BotManager
 from game.runners import singlerunner, batchrunner, geneticrunner
 
 # All system logs go here.
 LOG_BASE_PATH = 'logs'
 
-def quit(message = 'Exiting...'):
-  log_debug(message)
-  sys.exit(1)
+def quit_game(message='Exiting...'):
+    """Quit the game, displaying a message.
+
+    Args:
+        message: The debug message to display.
+    """
+
+    log_debug(message)
+    sys.exit(1)
 
 
 def check_int1plus(value):
-  try:
-    ivalue = int(value)
-    if (ivalue <= 0):
-      raise argparse.ArgumentTypeError("Expected an int greater than one, " +
-                                         "but got {}".format(ivalue))
-  except ValueError:
-    raise argparse.ArgumentTypeError("Expected an int, but got '{}'".
-                                     format(value))
+    """Check that value is an int greater than one.
 
-  return ivalue
+    Args:
+        value: The value to check.
+
+    Returns:
+        The value if valid.
+    """
+    try:
+        ivalue = int(value)
+        if (ivalue <= 0):
+            raise argparse.ArgumentTypeError("Expected an int greater than "
+                                             "one, but got {}".format(ivalue))
+    except ValueError:
+        raise argparse.ArgumentTypeError("Expected an int, but got '{}'".
+                                         format(value))
+
+    return ivalue
+
 
 def check_int0plus(value):
-  try:
-    ivalue = int(value)
-    if (ivalue < 0):
-      raise argparse.ArgumentTypeError("Expected an int greater than zero, " +
-                                         "but got {}".format(ivalue))
-  except ValueError:
-    raise argparse.ArgumentTypeError("Expected an int, but got '{}'".
-                                     format(value))
+    """Check that value is an int greater than zero.
 
-  return ivalue
+    Args:
+        value: The value to check.
+
+    Returns:
+        The value if valid.
+    """
+    try:
+        ivalue = int(value)
+        if (ivalue < 0):
+            raise argparse.ArgumentTypeError("Expected an int greater than "
+                                             "zero, but got {}".format(ivalue))
+    except ValueError:
+        raise argparse.ArgumentTypeError("Expected an int, but got '{}'".
+                                         format(value))
+
+    return ivalue
+
 
 def parse_config():
-  parser = argparse.ArgumentParser(description='Game Runner')
-  parser.add_argument('robot1', help='First robot, e.g. "human"')
-  parser.add_argument('robot2', help='Second robot')
-  parser.add_argument('--batch', type=check_int0plus,
-                      help='Batch mode. Specify the number of games to run')
-  parser.add_argument('--stoponloss',
-                      help='Stop if the specified player loses')
-  parser.add_argument('--genetic', type=check_int1plus,
-                      help='Genetic mode. Specify number of generations to ' +
-                      'run (Requires --batch)')
-  parser.add_argument('--samples', type=check_int1plus,
-                      help='Number of samples per generation. ' +
-                      '(Requires --genetic)')
-  parser.add_argument('--keep', type=check_int1plus,
-                      help='Number of winning samples to "keep" ' +
-                      '(Requires --genetic)')
-  parser.add_argument('--custom',
-                      help='Custom argument (passed to bot)')
-  parser.add_argument('--loggames', action="store_true",
-                      help='Also log individual games (may require a lot of ' +
+    """Parse the input arguments and game configuration.
+
+    Returns:
+        Dictionary containing configuration details.
+    """
+
+    parser = argparse.ArgumentParser(description='Game Runner')
+    parser.add_argument('bot1', help='First bot, e.g. "human"')
+    parser.add_argument('bot2', help='Second bot')
+    parser.add_argument('--batch', type=check_int0plus,
+                        help='Batch mode. Specify the number of games to run')
+    parser.add_argument('--stoponloss',
+                        help='Stop if the specified player loses')
+    parser.add_argument('--genetic', type=check_int1plus,
+                        help='Genetic mode. Specify number of generations to '
+                             'run (Requires --batch)')
+    parser.add_argument('--samples', type=check_int1plus,
+                        help='Number of samples per generation. '
+                             '(Requires --genetic)')
+    parser.add_argument('--keep', type=check_int1plus,
+                        help='Number of winning samples to "keep" '
+                             '(Requires --genetic)')
+    parser.add_argument('--custom', help='Custom argument (passed to bot)')
+    parser.add_argument('--loggames', action="store_true",
+                        help='Also log individual games (may require a lot of '
                              'disk space!)')
-  args = parser.parse_args()
+    args = parser.parse_args()
 
-  if (args.robot1 == None and args.robot2 == None):
-    print("You need to specify two robots")
-    sys.exit(1)
+    if (not args.bot1 or not args.bot2):
+        print("You need to specify two bots")
+        sys.exit(1)
 
-  config = {}
+    config = {}
 
-  # Check argument dependencies.
-  requires_batch = ['genetic',
-                    'samples',
-                    'keep']
-
-  requires_genetic = ['samples',
+    # Check argument dependencies.
+    requires_batch = ['genetic',
+                      'samples',
                       'keep']
 
-  args_dict = vars(args)
-  if (args.batch == None):
-    for req in requires_batch:
-      if (req in args_dict and args_dict[req] is not None):
-        print("ERROR: Option --{} requires --batch\n".format(req))
-        parser.print_help()
-        sys.exit(1)
+    requires_genetic = ['samples',
+                        'keep']
 
-  if (args.genetic == None):
-    for req in requires_genetic:
-      if (req in args_dict and args_dict[req] is not None):
-        print("ERROR: Option --{} requires --genetic\n".format(req))
-        parser.print_help()
-        sys.exit(1)
+    args_dict = vars(args)
+    if (args.batch is None):
+        for req in requires_batch:
+            if (req in args_dict and args_dict[req]):
+                parser.error("Option --{} requires --batch".format(req))
 
-  # Set the relevant config based on provided args.
-  config['console_logging']  = True
-  config['batch_mode']       = False
-  config['genetic_mode']     = False
-  config['no_batch_summary'] = False
+    if (not args.genetic):
+        for req in requires_genetic:
+            if (req in args_dict and args_dict[req]):
+                parser.error("Option --{} requires --genetic".format(req))
 
-  if (args.stoponloss):
-    config['stoponloss'] = args.stoponloss
+    # Set the relevant config based on provided args.
+    config['console_logging'] = True
+    config['batch_mode'] = False
+    config['genetic_mode'] = False
+    config['no_batch_summary'] = False
 
-  config['custom'] = None
-  if (args.custom != None):
-    config['custom'] = args.custom
+    if (args.stoponloss):
+        config['stoponloss'] = args.stoponloss
 
-  config['loggames'] = args.loggames
+    config['custom'] = None
+    if (args.custom):
+        config['custom'] = args.custom
 
-  config['num_games']       = 1
-  config['num_generations'] = 1
-  config['num_samples']     = 1
+    config['loggames'] = args.loggames
 
-  config['robot1'] = args.robot1
-  config['robot2'] = args.robot2
+    config['num_games'] = 1
+    config['num_generations'] = 1
+    config['num_samples'] = 1
 
-  if (args.batch != None):
-    config['batch_mode'] = True
-    config['silent']     = True
-    config['num_games']  = int(args.batch)
+    config['bot1'] = args.bot1
+    config['bot2'] = args.bot2
 
-    if (args.genetic != None):
-      config['genetic_mode']     = True
-      config['no_batch_summary'] = True
-      config['num_generations']  = int(args.genetic)
+    if (args.batch is not None):
+        config['batch_mode'] = True
+        config['silent'] = True
+        config['num_games'] = int(args.batch)
 
-      if (args.samples != None):
-        config['num_samples'] = int(args.samples)
+        if (args.genetic):
+            config['genetic_mode'] = True
+            config['no_batch_summary'] = True
+            config['num_generations'] = int(args.genetic)
 
-      if (args.keep != None):
-        config['keep_samples'] = int(args.keep)
+            if (args.samples):
+                config['num_samples'] = int(args.samples)
 
-  return config
+            if (args.keep):
+                config['keep_samples'] = int(args.keep)
+
+    return config
+
 
 if __name__ == '__main__':
-  config = parse_config()
+    config = parse_config()
 
-  config['log_base_dir'] = os.path.join(LOG_BASE_PATH, 'games')
+    # Set up logging.
+    config['log_base_dir'] = os.path.join(LOG_BASE_PATH, 'games')
 
-  try:
-    os.makedirs(config['log_base_dir'], exist_ok=True)
-  except Exception as e:
-    log_critical("Error creating game log dir '{}': {}".
-                 format(config['log_base_dir'], str(e)))
-    quit("Failed to create log dir")
+    try:
+        os.makedirs(config['log_base_dir'], exist_ok=True)
+    except IOError as e:
+        log_critical("Error creating game log dir '{}': {}".
+                     format(config['log_base_dir'], str(e)))
+        quit_game("Failed to create log dir")
 
-  # Init logging.
-  init_default_logger(LOG_BASE_PATH, console_logging = config['console_logging'])
+    init_default_logger(LOG_BASE_PATH,
+                        console_logging=config['console_logging'])
 
-  log_trace("Started")
+    log_trace("Started")
 
-  # Make randomness somewhat repeatable.
-  random.seed(1)
+    # Make randomness somewhat repeatable.
+    random.seed(1)
 
-  manager = game.robotmanager.ROBOTMANAGER()
-  robots  = manager.create_robots(config)
+    manager = BotManager()
+    bots = manager.create_bots(config)
 
-  log_trace("Robots created")
+    log_trace("Bots created")
 
-  try:
-    runner = None
-    if (config['genetic_mode']):
-      log_info("Using GENETIC game runner")
-      runner = geneticrunner.GENETICRUNNER()
-    elif (config['batch_mode']):
-      log_info("Using BATCH game runner")
-      runner = batchrunner.BATCHRUNNER()
-    else:
-      log_info("Using SINGLE game runner")
-      runner = singlerunner.SINGLERUNNER()
+    try:
+        runner = None
+        if (config['genetic_mode']):
+            log_info("Using GENETIC game runner")
+            runner = geneticrunner.GeneticRunner()
+        elif (config['batch_mode']):
+            log_info("Using BATCH game runner")
+            runner = batchrunner.BatchRunner()
+        else:
+            log_info("Using SINGLE game runner")
+            runner = singlerunner.SingleRunner()
 
-    runner.run(config, robots)
+        runner.run(config, bots)
 
-  except KeyboardInterrupt:
-    quit("Cancelled...")
+    except KeyboardInterrupt:
+        quit_game("Cancelled...")
 
-  quit("Game completed.")
+    quit_game("Game completed.")

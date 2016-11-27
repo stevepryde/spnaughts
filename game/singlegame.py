@@ -1,203 +1,237 @@
-################################################################################
-# SP Naughts - Simple naughts and crosses game including a collection of AI bots
-# Copyright (C) 2015, 2016 Steve Pryde
-#
-# This file is part of SP Naughts.
-#
-# SP Naughts is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# SP Naughts is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with SP Naughts.  If not, see <http://www.gnu.org/licenses/>.
-################################################################################
-# singlegame.py
-#
-# This class is used to run a single game of naughts and crosses and return some
-# information about the game.
+"""Module for running a single game of naughts and crosses and returning some
+basic information about the game.
+"""
 
-from game.log import *
+
+from game.log import log_error
 import game.board as board
 
-class SINGLEGAME(object):
-  def __init__(self):
-    self.game_log_lines = []
-    self.config = None
-    self.robots = []
-    self.game_board = None
-    self.current_robot_id = 0
-    self.num_turns = {'O':0,'X':0}
-    return
 
-  def get_game_log(self):
-    return "\n".join(self.game_log_lines)
+class SingleGame:
+    """Run a single game of naughts and crosses."""
 
-  def log_game(self, message):
-    if (self.config and
-        (('silent' not in self.config) or (not self.config['silent']))):
-      print(message)
+    def __init__(self):
+        """Create a new SingleGame object."""
+        self.game_log_lines = []
+        self.config = None
+        self.bots = []
+        self.game_board = None
+        self.current_bot_id = 0
+        self.num_turns = {'O': 0, 'X': 0}
+        return
 
-    self.game_log_lines.append(message)
-    return
+    @property
+    def game_log(self):
+        """str: The full game log"""
+        return "\n".join(self.game_log_lines)
 
-  def clone(self):
-    cloned_game = SINGLEGAME()
-    cloned_game.game_log_lines   = list(self.game_log_lines)
-    cloned_game.config           = self.config
-    cloned_game.robots           = list(self.robots)
-    cloned_game.game_board       = self.game_board.copy()
-    cloned_game.current_robot_id = self.current_robot_id
-    cloned_game.num_turns        = dict(self.num_turns)
-    return cloned_game
+    def is_ended(self):
+        """Returns True if the game has ended, otherwise False."""
+        return self.game_board.is_ended()
 
-  def start(self, config, robots):
-    self.config = config
-    self.robots = []
+    def log_game(self, message):
+        """Write the specified message to the game log.
 
-    for robot in robots:
-      robot.setup()
-      self.robots.append(robot)
+        Args:
+            message:  String to write to the game log.
+        """
+        if (self.config and not self.config.get('silent')):
+            print(message)
 
-    self.game_board = board.BOARD()
-    self.log_game("START GAME")
+        self.game_log_lines.append(message)
+        return
 
-    self.current_robot_id = 0
+    def clone(self):
+        """Clone this instance of SingleGame.
 
-    self.num_turns = {'O':0,'X':0}
+        Returns:
+            New SingleGame instance that is a clone of this one.
+        """
+        cloned_game = SingleGame()
+        cloned_game.game_log_lines = list(self.game_log_lines)
+        cloned_game.config = self.config
+        cloned_game.bots = list(self.bots)
+        cloned_game.game_board = self.game_board.copy()
+        cloned_game.current_bot_id = self.current_bot_id
+        cloned_game.num_turns = dict(self.num_turns)
+        return cloned_game
 
-    return
+    def start(self, config, bots):
+        """Start new game.
 
-  def do_turn(self):
-    if (not self.config['silent']):
-      self.game_board.show()
+        Args:
+            config: Dictionary containing game config.
+            bots: List of bots to run.
+        """
+        self.config = config
+        self.bots = []
 
-    current_robot = self.robots[self.current_robot_id]
-    name     = current_robot.get_name()
-    identity = current_robot.get_identity()
+        for bot in bots:
+            bot.setup()
+            self.bots.append(bot)
 
-    self.log_game("What is your move, '{}'?".format(name))
+        self.game_board = board.Board()
+        self.log_game("START GAME")
+        self.current_bot_id = 0
+        self.num_turns = {'O': 0, 'X': 0}
+        return
 
-    # Allow for a bot to return multiple moves. This is useful for running
-    # the 'omnibot' in order to train or measure other bots.
-    moves = current_robot.do_turn(self.game_board)
+    def do_turn(self):
+        """Process one game turn."""
+        if (not self.config.get('silent')):
+            self.game_board.show()
 
-    # Update current_robot_id early, this way it will be copied to any
-    # cloned games...
-    if (self.current_robot_id == 0):
-      self.current_robot_id = 1
-    else:
-      self.current_robot_id = 0
+        current_bot = self.bots[self.current_bot_id]
+        name = current_bot.name
+        identity = current_bot.identity
 
-    game_clones = []
-    if (type(moves) is list):
-      for move in moves:
-        # clone this game.
-        cloned_game = self.clone()
+        self.log_game("What is your move, '{}'?".format(name))
 
-        # apply move to clone.
-        cloned_game.apply_move(int(move), name, identity)
+        # Allow for a bot to return multiple moves. This is useful for running
+        # the 'omnibot' in order to train or measure other bots.
+        moves = current_bot.do_turn(self.game_board)
 
-        # append to game_clones
-        game_clones.append(cloned_game)
-    else:
-      # type(moves) is not list
-      self.apply_move(int(moves), name, identity)
+        # Update current_bot_id early, this way it will be copied to any
+        # cloned games...
+        if (self.current_bot_id == 0):
+            self.current_bot_id = 1
+        else:
+            self.current_bot_id = 0
 
-      # This will not affect the standard game runner.
-      # The omnibot runner should use the returned list of games and discard
-      # the one that was used to call do_turn().
-      game_clones = [self]
+        game_clones = []
+        if (type(moves) is list):
+            for move in moves:
+                # clone this game.
+                cloned_game = self.clone()
 
-    return game_clones
+                # apply move to clone.
+                cloned_game.apply_move(int(move), name, identity)
 
-  def apply_move(self, move, name, identity):
-    self.log_game("'{}' chose move ({})".format(name, move))
-    self.log_game("")
+                # append to game_clones
+                game_clones.append(cloned_game)
+        else:
+            # Single move only.
+            self.apply_move(int(moves), name, identity)
 
-    if (move < 0 or move > 8):
-      log_error("Robot '{}' performed a move out of range ({})".
-                format(name, move))
+            # This will not affect the standard game runner.
+            # The omnibot runner should use the returned list of games and
+            # discard the one that was used to call do_turn().
+            game_clones = [self]
 
-      return
+        return game_clones
 
-    elif (self.game_board.getat(move) != ' '):
-      log_error("Robot '{}' performed an illegal move ({})".
-                format(name, move))
+    def apply_move(self, move, name, identity):
+        """Apply the specified move to the current game.
 
-      return
+        Args:
+            move (int): The move to apply.
+            name (str): The name of the bot.
+            identity (str): The player identity ('X' or 'O')
 
-    self.game_board.setat(move, identity)
+        """
 
-    self.num_turns[identity] += 1
+        self.log_game("'{}' chose move ({})".format(name, move))
+        self.log_game("")
 
-    if (not self.config['silent']):
-      self.game_board.show()
+        if (move < 0 or move > 8):
+            log_error("Bot '{}' performed a move out of range ({})".
+                      format(name, move))
+            return
 
-    return
+        if (self.game_board.getat(move) != ' '):
+            log_error("Bot '{}' performed an illegal move ({})".
+                      format(name, move))
+            return
 
-  def is_ended(self):
-    return self.game_board.is_ended()
+        self.game_board.setat(move, identity)
+        self.num_turns[identity] += 1
 
-  def run(self, config, robots):
-    self.start(config, robots)
+        if (not self.config.get('silent')):
+            self.game_board.show()
 
-    while (not self.is_ended()):
-      self.do_turn()
+        return
 
-    game_info = self.get_game_info()
-    return game_info
+    def run(self, config, bots):
+        """Run this game.
 
-  def get_game_info(self):
-    if (len(self.robots) != 2):
-      log_error("No robots have been set up - was this game started?")
-      return
+        Args:
+            config: Configuration details.
+            bots: List of bots.
 
-    result = self.game_board.get_game_state()
+        Returns:
+            Dictionary containing game info.
+        """
+        self.start(config, bots)
 
-    if (result == 0):
-      log_error("Game ended with invalid state of 0 - was this game finished?")
-      return
+        while (not self.is_ended):
+            self.do_turn()
 
-    score_X = self.calculate_score(self.num_turns['X'], result == 1, result == 3)
-    score_O = self.calculate_score(self.num_turns['O'], result == 2, result == 3)
+        game_info = self.get_game_info()
+        return game_info
 
-    if (result == 1): # X wins
-      self.log_game("Robot '{}' wins".format(self.robots[0].get_name()))
-      self.robots[0].process_result('WIN', score_X)
-      self.robots[1].process_result('LOSS', score_O)
-    elif (result == 2): # O wins
-      self.log_game("Robot '{}' wins".format(self.robots[1].get_name()))
-      self.robots[0].process_result('LOSS', score_X)
-      self.robots[1].process_result('WIN', score_O)
-    elif (result == 3): # Tie
-      self.log_game("It's a TIE")
-      self.robots[0].process_result('TIE', score_X)
-      self.robots[1].process_result('TIE', score_O)
-    else:
-      log_error("Game ended with invalid state ({})".format(result))
-      return
+    def get_game_info(self):
+        """Get information about this game.
 
-    self.log_game("Scores: '{}':{:.2f} , '{}':{:.2f}".
-                  format(self.robots[0].get_name(), score_X,
-                         self.robots[1].get_name(), score_O))
+        Returns:
+            Dictionary containing game info.
+        """
+        if (len(self.bots) != 2):
+            log_error("No bots have been set up - was this game started?")
+            return
 
-    game_info = {'result':result,
-                 'scores':{'X':score_X,'O':score_O}}
-    return game_info
+        result = self.game_board.get_game_state()
 
-  def calculate_score(self, num_turns, is_win, is_draw):
-    score = 10 - num_turns
-    if (not is_win):
-      if (is_draw):
-        score = 0
-      else:
-        # Weight losses much more heavily than wins
-        score = -score * 10
+        if (result == 0):
+            log_error("Game ended with invalid state of 0 - was this game "
+                      "finished?")
+            return
 
-    return score
+        score_X = self.calculate_score(self.num_turns['X'], result == 1,
+                                       result == 3)
+        score_O = self.calculate_score(self.num_turns['O'], result == 2,
+                                       result == 3)
+
+        if (result == 1): # X wins
+            self.log_game("Bot '{}' wins".format(self.bots[0].name))
+            self.bots[0].process_result('WIN', score_X)
+            self.bots[1].process_result('LOSS', score_O)
+        elif (result == 2): # O wins
+            self.log_game("Bot '{}' wins".format(self.bots[1].name))
+            self.bots[0].process_result('LOSS', score_X)
+            self.bots[1].process_result('WIN', score_O)
+        elif (result == 3): # Tie
+            self.log_game("It's a TIE")
+            self.bots[0].process_result('TIE', score_X)
+            self.bots[1].process_result('TIE', score_O)
+        else:
+            log_error("Game ended with invalid state ({})".format(result))
+            return
+
+        self.log_game("Scores: '{}':{:.2f} , '{}':{:.2f}".
+                      format(self.bots[0].name, score_X,
+                             self.bots[1].name, score_O))
+
+        game_info = {'result':result,
+                     'scores':{'X': score_X, 'O': score_O}}
+        return game_info
+
+    def calculate_score(self, num_turns, is_win, is_draw):
+        """Calculate the 'score' for this game, from the perspective of bot 1.
+
+        Args:
+            num_turns: The number of turns played.
+            is_win: True if this game is a win.
+            is_draw: True if this game is a draw.
+
+        Returns:
+            The game score, as float.
+        """
+        score = 10 - num_turns
+        if (not is_win):
+            if (is_draw):
+                score = 0
+            else:
+                # Weight losses much more heavily than wins
+                score = -score * 10
+
+        return score
