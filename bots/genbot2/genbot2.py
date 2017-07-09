@@ -37,7 +37,8 @@ class GENBOT2(GeneticBot):
                 if (parts[0] == 'recipefile'):
                     recipefn = parts[1]
                     if (not os.path.exists(recipefn)):
-                        log_error("Recipe file '{}' not found".format(recipefn))
+                        log_error(
+                            "Recipe file '{}' not found".format(recipefn))
                     else:
                         try:
                             with open(recipefn, 'rb') as rf:
@@ -72,7 +73,7 @@ class GENBOT2(GeneticBot):
                 self.nodes.append(nodes.NODE_INPUT())
 
         # Now generate random nodes.
-        num_nodes = 500
+        num_nodes = 5000
         for n in range(num_nodes):
             # Create a random node.
             node = self.get_random_node_instance()
@@ -149,7 +150,7 @@ class GENBOT2(GeneticBot):
 
         return
 
-    def mutate_recipe(self, recipe):
+    def mutate_recipe(self, recipe, num_mutations=1):
         """Mutate the specified recipe.
 
         Args:
@@ -162,50 +163,54 @@ class GENBOT2(GeneticBot):
 
         # Get list of non-output nodes.
         normal_node_count = 0
-        for block in recipe_blocks:
+        candidate_indexes = []
+        for index, block in enumerate(recipe_blocks):
             ingredient = block.split(':')
 
             if (ingredient[0] == 'NODE_OUTPUT'):
                 break
 
             normal_node_count += 1
+            candidate_indexes.append(index)
 
-        # If we hit an input node, try again, up to 10 times.
-        for _ in range(10):
-            mutated_index = random.randrange(len(recipe_blocks))
+        for _ in range(num_mutations):
 
-            ingredient = recipe_blocks[mutated_index]
-            ingredient_blocks = ingredient.split(':')
+            # If we hit an input node, try again, up to 10 times.
+            for _ in range(10):
+                mutated_index = random.randrange(len(candidate_indexes))
 
-            name = ingredient_blocks[0]
-            if (name == 'NODE_INPUT'):
-                continue
+                ingredient = recipe_blocks[candidate_indexes[mutated_index]]
+                ingredient_blocks = ingredient.split(':')
 
-            node = None
+                name = ingredient_blocks[0]
+                if (name == 'NODE_INPUT'):
+                    continue
 
-            if (name == 'NODE_OUTPUT'):
-                class_ = getattr(nodes, name)
-                node = class_()
-            else:
-                # Output nodes must stay as output nodes, but all others can
-                # be changed.
-                node = self.get_random_node_instance()
-                name = type(node).__name__
+                node = None
 
-            num_inputs = node.num_inputs
-            new_ingredient_blocks = [name]
+                if (name == 'NODE_OUTPUT'):
+                    class_ = getattr(nodes, name)
+                    node = class_()
+                else:
+                    # Output nodes must stay as output nodes, but all others
+                    # can be changed.
+                    node = self.get_random_node_instance()
+                    name = type(node).__name__
 
-            # The inputs must come from non-output nodes, and with an index
-            # lower than the current index.
-            max_index = min(mutated_index, normal_node_count - 1)
+                num_inputs = node.num_inputs
+                new_ingredient_blocks = [name]
 
-            input_numbers = random.sample(range(max_index), num_inputs)
-            for num in input_numbers:
-                new_ingredient_blocks.append(str(num))
+                # The inputs must come from non-output nodes, and with an index
+                # lower than the current index.
+                max_index = min(mutated_index, normal_node_count - 1)
 
-            # Replace the ingredient.
-            recipe_blocks[mutated_index] = ':'.join(new_ingredient_blocks)
-            break
+                input_numbers = random.sample(range(max_index), num_inputs)
+                for num in input_numbers:
+                    new_ingredient_blocks.append(str(num))
+
+                # Replace the ingredient.
+                recipe_blocks[mutated_index] = ':'.join(new_ingredient_blocks)
+                break
 
         return ','.join(recipe_blocks)
 
@@ -286,7 +291,9 @@ class GENBOT2(GeneticBot):
             dsort[move] = self.output_nodes[move].output
 
         sorted_moves = sorted(dsort, key=dsort.__getitem__, reverse=True)
-        return int(sorted_moves[0])
+        selected_move = int(sorted_moves[0])
+
+        return selected_move
 
         # END OF BRAIN ENGAGEMENT
 

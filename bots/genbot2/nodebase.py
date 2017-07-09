@@ -37,8 +37,8 @@ class NodeBase:
         Process this node, getting the output values from each of the linked
         inputs, and passing those values to process(), and then storing the
         returned value in self.output.
-        By calling update() on every node in sequence, we can process the entire
-        tree.
+        By calling update() on every node in sequence, we can process the
+        entire tree.
         """
         inputs = []
         for node in self.input_nodes:

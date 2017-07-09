@@ -23,7 +23,7 @@ COLOURS = {'trace': 'yellow',
            'warning': 'blue',
            'error': 'magenta',
            'critical': 'red'
-          }
+           }
 
 
 def init_default_logger(logpath, **kwargs):
@@ -37,6 +37,7 @@ def init_default_logger(logpath, **kwargs):
     logfn = os.path.join(logpath, "logfile_" + ts + ".log")
     init_logger(DEFAULT_LOG_NAME, logfn, **kwargs)
     return
+
 
 def init_logger(name, logfn, console_logging=False):
     """Init logger.
@@ -66,7 +67,8 @@ def init_logger(name, logfn, console_logging=False):
 
     if (console_logging):
         # Create console handler with a higher log level.
-        ch = RainbowLoggingHandler(sys.stdout,
+        ch = RainbowLoggingHandler(
+            sys.stdout,
             # Foreground colour, background colour, bold flag.
             color_message_debug=(COLOURS['debug'], 'None', False),
             color_message_info=(COLOURS['info'], 'None', False),
@@ -171,6 +173,7 @@ def log_debug(text, log_name=DEFAULT_LOG_NAME):
         logobj.debug(line)
 
     return
+
 
 def log_trace(text, log_name=DEFAULT_LOG_NAME):
     """Write text to the log at TRACE level.

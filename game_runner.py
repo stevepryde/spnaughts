@@ -13,6 +13,7 @@ from game.runners import singlerunner, batchrunner, geneticrunner
 
 # All system logs go here.
 LOG_BASE_PATH = 'logs'
+DATA_BASE_PATH = 'data'
 
 def quit_game(message='Exiting...'):
     """Quit the game, displaying a message.
@@ -90,6 +91,9 @@ def parse_config():
     parser.add_argument('--keep', type=check_int1plus,
                         help='Number of winning samples to "keep" '
                              '(Requires --genetic)')
+    parser.add_argument('--top', action="store_true",
+                        help='Start with the top bots for this bot type. '
+                             '(Requires --genetic)')
     parser.add_argument('--custom', help='Custom argument (passed to bot)')
     parser.add_argument('--loggames', action="store_true",
                         help='Also log individual games (may require a lot of '
@@ -105,10 +109,12 @@ def parse_config():
     # Check argument dependencies.
     requires_batch = ['genetic',
                       'samples',
-                      'keep']
+                      'keep',
+                      'top']
 
     requires_genetic = ['samples',
-                        'keep']
+                        'keep',
+                        'top']
 
     args_dict = vars(args)
     if (args.batch is None):
@@ -159,6 +165,9 @@ def parse_config():
             if (args.keep):
                 config['keep_samples'] = int(args.keep)
 
+            if (args.top):
+                config['use_top_bots'] = True
+
     return config
 
 
@@ -174,6 +183,14 @@ if __name__ == '__main__':
         log_critical("Error creating game log dir '{}': {}".
                      format(config['log_base_dir'], str(e)))
         quit_game("Failed to create log dir")
+
+    config['data_path'] = DATA_BASE_PATH
+    try:
+        os.makedirs(config['data_path'], exist_ok=True)
+    except IOError as e:
+        log_critical("Error creating data dir '{}': {}".
+                     format(config['data_path'], str(e)))
+        quit_game("Failed to create data dir")
 
     init_default_logger(LOG_BASE_PATH,
                         console_logging=config['console_logging'])

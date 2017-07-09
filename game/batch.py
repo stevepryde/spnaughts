@@ -172,9 +172,9 @@ class Batch:
         self.log_summary("Games Played: {}".format(self.num_games_played))
         self.log_summary("")
         self.log_summary("'{}' WINS: {}".format(self.bots[0].name,
-                         self.overall_results[1]))
+                                                self.overall_results[1]))
         self.log_summary("'{}' WINS: {}".format(self.bots[1].name,
-                         self.overall_results[2]))
+                                                self.overall_results[2]))
         self.log_summary("DRAW/TIE: {}".format(self.overall_results[3]))
         self.log_summary("")
 
@@ -194,7 +194,8 @@ class Batch:
                              format(self.bots[0].name, avg_score_X,
                                     self.bots[1].name, avg_score_O))
 
-        return [avg_score_X, avg_score_O]
+            return [avg_score_X, avg_score_O]
+        return [0, 0]
 
     def run_normal_batch(self):
         """Run normal batch of games."""
@@ -253,7 +254,8 @@ class Batch:
 
                         self.process_game_result(game_num, game_info)
                     else:
-                        # This game has not yet finished, so add it to the end of the queue.
+                        # This game has not yet finished, so add it to the end
+                        # of the queue.
                         game_queue.append(new_game_obj)
         except IndexError:
             # All games should have been run to completion.

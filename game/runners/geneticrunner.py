@@ -11,7 +11,7 @@ from game.batch import Batch
 from game.botmanager import BotManager
 from game.log import log_critical, log_error, log_info
 from game.runners.gamerunnerbase import GameRunnerBase
-
+from game.support.topbots import TopBots
 
 MAX_SCORE = 7.0
 
@@ -19,17 +19,19 @@ MAX_SCORE = 7.0
 class BatchWorker(multiprocessing.Process):
     """Worker class for a single 'thread'."""
 
-    def __init__(self, batch_queue):
+    def __init__(self, batch_queue, score_threshold):
         """Create new BatchWorker object.
 
         Args:
             batch_queue: collections.deque() object containing batches to run.
+            score_threshold: Maximum score to beat.
         """
         super().__init__()
 
         self.batch_queue = batch_queue
         self.manager = multiprocessing.Manager()
         self.__scores = self.manager.dict()
+        self.score_threshold = score_threshold
         return
 
     @property
@@ -72,8 +74,13 @@ class BatchWorker(multiprocessing.Process):
                         log_error("Error creating batch log path '{}': {}".
                                   format(gen_path, str(e)))
 
-                print("Completed batch for sample {:5d} :: score = {:.3f}".
-                      format(sample, batch_scores[bot_index]))
+                win = ""
+                score = batch_scores[bot_index]
+                if (score > self.score_threshold):
+                    win = "*"
+
+                print("Completed batch for sample {:5d} :: score = {:.3f} {}".
+                      format(sample, score, win))
 
                 self.batch_queue.task_done()
         except KeyboardInterrupt:
@@ -92,7 +99,7 @@ class GeneticRunner(GameRunnerBase):
         self.config = None
         self.bots = None
         self.genetic_bot_index = 0
-        self.standard_mutations = 50
+        self.standard_mutations = 0
         self.genetic_index = 0
         self.genetic_name = None
         self.game_log_path = None
@@ -142,7 +149,7 @@ class GeneticRunner(GameRunnerBase):
         self.config = config
         self.bots = bots
         self.genetic_index = 0
-        self.standard_mutations = 50
+        self.standard_mutations = 20
 
         # Determine which bot is genetic.
         if (not bots[0].genetic):
@@ -168,7 +175,8 @@ class GeneticRunner(GameRunnerBase):
                                                  ts))
 
         if (os.path.exists(self.game_log_path)):
-            log_critical("Path '{}' already exists!".format(self.game_log_path))
+            log_critical("Path '{}' already exists!".format(
+                self.game_log_path))
             return
 
         try:
@@ -198,6 +206,11 @@ class GeneticRunner(GameRunnerBase):
         if (not input_samples):
             # Start from scratch, just create random bots.
             # NOTE: The original bot is discarded (for convenience).
+
+            # NOTE: if --top is specified, create bots from the top recipes.
+            top_index = 0
+            botname = self.bots[self.genetic_index].name
+            top_recipes = self.config['toplist'].get_top_recipe_list(botname)
             for s in range(1, self.config['num_samples'] + 1):
                 bot_obj = manager.create_bot(self.genetic_name)
 
@@ -206,11 +219,20 @@ class GeneticRunner(GameRunnerBase):
                                  format(self.genetic_name))
                     return
 
-                # Name it using the generation and sample number. This is generation 0.
+                # Name it using the generation and sample number.
+                # This is generation 0.
                 bot_obj.name = "{}-{}-{}".format(self.genetic_name,
                                                  generation, s)
 
-                bot_obj.create(self.config)
+                if (self.config.get('use_top_bots') and top_recipes):
+                    if (top_index >= len(top_recipes)):
+                        # Out of range: Just repeat the first one.
+                        bot_obj.create_from_recipe(top_recipes[0])
+                    else:
+                        bot_obj.create_from_recipe(top_recipes[top_index])
+                        top_index += 1
+                else:
+                    bot_obj.create(self.config)
                 self.genetic_pool.append(bot_obj)
             return
 
@@ -233,7 +255,7 @@ class GeneticRunner(GameRunnerBase):
             if (self.standard_mutations < 1):
                 self.standard_mutations = 1
 
-            mutation_range = int(self.standard_mutations * 0.5)
+            mutation_range = self.standard_mutations * 2.0
             min_mutations = self.standard_mutations - int(mutation_range / 2.0)
 
             if (min_mutations < 1):
@@ -259,8 +281,8 @@ class GeneticRunner(GameRunnerBase):
                                                min_mutations + mutation_range)
 
                 mutated_recipe = sample_recipe
-                for _ in range(num_mutations):
-                    mutated_recipe = bot_obj.mutate_recipe(mutated_recipe)
+                mutated_recipe = bot_obj.mutate_recipe(mutated_recipe,
+                                                       num_mutations)
 
                 bot_obj.create_from_recipe(mutated_recipe)
                 bot_obj.set_metadata('mutations', num_mutations)
@@ -300,6 +322,10 @@ class GeneticRunner(GameRunnerBase):
 
         selected_samples = []
 
+        toplist = TopBots(config['data_path'])
+        self.config['toplist'] = toplist
+        score_threshold = -999  # This will be reset after first round.
+
         for gen in range(config['num_generations']):
             self.log_genetic("--------------------------")
             self.log_genetic("Generation '{}':".format(str(gen)))
@@ -307,11 +333,14 @@ class GeneticRunner(GameRunnerBase):
             # Set up the genetic bot pool.
             self.generate_samples(selected_samples, gen)
 
+            self.log_genetic("Standard Mutations: '{}'".
+                             format(self.standard_mutations))
+
             # Set up the batch queue and worker threads.
             batch_queue = multiprocessing.JoinableQueue()
             threads = []
             for _ in range(self.num_threads):
-                thr = BatchWorker(batch_queue)
+                thr = BatchWorker(batch_queue, score_threshold)
                 thr.start()
                 threads.append(thr)
 
@@ -329,7 +358,7 @@ class GeneticRunner(GameRunnerBase):
                                     'sample': s,
                                     'log_path': self.game_log_path,
                                     'index': self.genetic_index
-                                   }
+                                    }
                 batch_queue.put(batch)
 
             # Wait for all batches to process...
@@ -364,7 +393,14 @@ class GeneticRunner(GameRunnerBase):
             selected_scores = []
             selected_recipes = []
             for sample in selected_samples:
+                # Check if this is one of the top for this bot.
                 score = sample.score
+                toplist.check(bots[self.genetic_index].name, sample.recipe,
+                              score)
+
+                if (score > score_threshold):
+                    score_threshold = score
+
                 selected_scores.append("{:.3f}".format(score))
                 selected_recipes.append("[{:.3f}]: '{}'".
                                         format(score, sample.recipe))
