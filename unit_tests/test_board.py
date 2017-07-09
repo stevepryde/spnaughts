@@ -1,21 +1,23 @@
 #!/usr/bin/env python
 """
+Unit test for the Naughts and Crosses board.
+
 cd ..
 python -m unittest -v test_board.py
 """
 
-import os
-import sys
+
 import unittest
 
 import game.board as board
 from bots.bot_base import Bot
 
+
 class BoardTest(unittest.TestCase):
     """Basic unit tests for game.board.Board."""
 
     def test_board(self):
-        """Various unit tests for Board"""
+        """Various unit tests for Board."""
         b = board.Board()
 
         b.data = 'X--OO-OXX'

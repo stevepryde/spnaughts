@@ -1,6 +1,5 @@
 """
-My first attempt at a bot using a genetic algorithm to 'grow' it's own
-'brain'.
+My first attempt at a bot using a genetic algorithm.
 
 See nodes.py for some more details.
 
@@ -73,7 +72,7 @@ import random
 
 from bots.genetic_bot_base import GeneticBot
 from bots.genbot1 import nodes
-from game.log import log_debug, log_error, log_trace
+from game.log import log_error
 
 
 class GENBOT1(GeneticBot):
@@ -90,21 +89,20 @@ class GENBOT1(GeneticBot):
     def create(self, config):
         """Create a new GENBOT1, using the specified config.
 
-        Args:
-            config: The configuration details.
+        :param config: The configuration details.
         """
-
         self.nodes = []
         self.output_nodes = []
         self.initial_recipe = None
-        if (config['custom']):
+        if config['custom']:
             params = config['custom'].split(',')
             for param in params:
                 parts = param.split(':')
-                if (parts[0] == 'recipefile'):
+                if parts[0] == 'recipefile':
                     recipefn = parts[1]
-                    if (not os.path.exists(recipefn)):
-                        log_error("Recipe file '{}' not found".format(recipefn))
+                    if not os.path.exists(recipefn):
+                        log_error(
+                            "Recipe file '{}' not found".format(recipefn))
                     else:
                         try:
                             with open(recipefn, 'rb') as rf:
@@ -112,15 +110,16 @@ class GENBOT1(GeneticBot):
 
                             # Strip trailing newline chars.
                             self.initial_recipe = \
-                              self.initial_recipe.decode('UTF8').rstrip('\n')
+                                self.initial_recipe.decode('UTF8').rstrip('\n')
                             self.log_debug("Loaded recipe from file '{}'".
                                            format(recipefn))
                         except OSError as e:
-                            log_error("Error reading recipe from file '{}': {}".
+                            log_error("Error reading recipe from file "
+                                      "'{}': {}".
                                       format(recipefn, str(e)))
                             return
 
-        if (self.initial_recipe):
+        if self.initial_recipe:
             self.create_from_recipe(self.initial_recipe)
         else:
             self.create_brain()
@@ -128,7 +127,6 @@ class GENBOT1(GeneticBot):
 
     def create_brain(self):
         """Create new brain consisting of random nodes."""
-
         self.log_trace('Creating brain')
 
         self.nodes = []
@@ -185,11 +183,7 @@ class GENBOT1(GeneticBot):
         return ','.join(recipe_blocks)
 
     def create_from_recipe(self, recipe):
-        """Create new bot from recipe.
-
-        Args:
-            recipe: The recipe from which to create the bot.
-        """
+        """Create new bot from recipe."""
         self.nodes = []
         self.output_nodes = []
 
@@ -201,14 +195,14 @@ class GENBOT1(GeneticBot):
             class_ = getattr(nodes, classname)
             instance = class_()
 
-            if (classname != 'NODE_INPUT'):
+            if classname != 'NODE_INPUT':
                 inputs_required = instance.num_inputs
                 assert len(ingredient_blocks) == inputs_required + 1
 
                 for input_number in ingredient_blocks[1:]:
                     instance.add_input_node(self.nodes[int(input_number)])
 
-            if (classname == 'NODE_OUTPUT'):
+            if classname == 'NODE_OUTPUT':
                 self.output_nodes.append(instance)
             else:
                 self.nodes.append(instance)
@@ -218,14 +212,7 @@ class GENBOT1(GeneticBot):
         return
 
     def mutate_recipe(self, recipe):
-        """Mutate the specified recipe.
-
-        Args:
-            recipe: The recipe to mutate.
-
-        Returns:
-            The mutated recipe.
-        """
+        """Mutate the specified recipe."""
         recipe_blocks = recipe.split(',')
 
         # Get list of non-output nodes.
@@ -233,7 +220,7 @@ class GENBOT1(GeneticBot):
         for block in recipe_blocks:
             ingredient = block.split(':')
 
-            if (ingredient[0] == 'NODE_OUTPUT'):
+            if ingredient[0] == 'NODE_OUTPUT':
                 break
 
             normal_node_count += 1
@@ -246,16 +233,17 @@ class GENBOT1(GeneticBot):
             ingredient_blocks = ingredient.split(':')
 
             name = ingredient_blocks[0]
-            if (name == 'NODE_INPUT'):
+            if name == 'NODE_INPUT':
                 continue
 
             node = None
 
-            if (name == 'NODE_OUTPUT'):
+            if name == 'NODE_OUTPUT':
                 class_ = getattr(nodes, name)
                 node = class_()
             else:
-                # Output nodes must stay as output nodes, but all others can be changed.
+                # Output nodes must stay as output nodes, but all others can be
+                # changed.
                 node = self.get_random_node_instance()
                 name = type(node).__name__
 
@@ -277,11 +265,7 @@ class GENBOT1(GeneticBot):
         return ','.join(recipe_blocks)
 
     def get_random_node_instance(self):
-        """Create random node instance.
-
-        Returns:
-            New random NodeBase-derived instance.
-        """
+        """Create random node instance."""
         nodepool = ['NOT',
                     'AND',
                     'OR',
@@ -311,37 +295,36 @@ class GENBOT1(GeneticBot):
 
         for seq in straight_sequences:
             (ours, theirs, blanks) = self.get_sequence_info(current_board, seq)
-            if (len(ours) == 2 and len(blanks) == 1):
+            if len(ours) == 2 and len(blanks) == 1:
                 # Move into the blank for the win.
                 return int(blanks[0])
 
         # Second, if we can't win, make sure the opponent can't win either.
         for seq in straight_sequences:
             (ours, theirs, blanks) = self.get_sequence_info(current_board, seq)
-            if (len(theirs) == 2 and len(blanks) == 1):
+            if len(theirs) == 2 and len(blanks) == 1:
                 # Move into the blank to block the win.
                 return int(blanks[0])
 
         # If this is the first move...
         (ours, theirs, blanks) = self.get_sequence_info(current_board,
                                                         '012345678')
-        if (len(ours) == 0):
+        if not ours:
             # If we're the second player:
-            if (len(theirs) > 0):
-                if (4 in moves):
+            if theirs:
+                if 4 in moves:
                     return 4
 
                 # Otherwise take the upper left.
                 return 0
 
         # ENGAGE BRAIN
-
         self.log_trace('Engaging brain')
 
         # Populate input nodes with the current board state.
         i = 0
         for p in range(9):
-            if (current_board.getat(p) == ' '):
+            if current_board.getat(p) == ' ':
                 self.nodes[i].set_value(1)
             else:
                 self.nodes[i].set_value(0)
@@ -351,7 +334,7 @@ class GENBOT1(GeneticBot):
         my_id = self.identity
 
         for p in range(9):
-            if (current_board.getat(p) == my_id):
+            if current_board.getat(p) == my_id:
                 self.nodes[i].set_value(1)
             else:
                 self.nodes[i].set_value(0)
@@ -361,7 +344,7 @@ class GENBOT1(GeneticBot):
         their_id = self.other_identity
 
         for p in range(9):
-            if (current_board.getat(p) == their_id):
+            if current_board.getat(p) == their_id:
                 self.nodes[i].set_value(1)
             else:
                 self.nodes[i].set_value(0)
@@ -391,21 +374,3 @@ class GENBOT1(GeneticBot):
         return int(sorted_moves[0])
 
         # END OF BRAIN ENGAGEMENT
-
-    def log_debug(self, message):
-        """Convenience method to log a message with the bot name as a prefix.
-
-        Args:
-            message: The log message.
-        """
-        log_debug("[GENBOT1]: " + message)
-        return
-
-    def log_trace(self, message):
-        """Convenience method to log a message with the bot name as a prefix.
-
-        Args:
-            message: The log message.
-        """
-        log_trace("[GENBOT1]: " + message)
-        return

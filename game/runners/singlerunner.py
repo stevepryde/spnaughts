@@ -9,17 +9,12 @@ from game.log import log_error
 from game.runners.gamerunnerbase import GameRunnerBase
 from game.singlegame import SingleGame
 
+
 class SingleRunner(GameRunnerBase):
     """Game Runner for a single game."""
 
     def run(self, config, bots):
-        """Run a single game.
-
-        Args:
-            config: The configuration details.
-            bots: List of bots to run.
-        """
-
+        """Run a single game."""
         # Run a single batch.
         for index, identity in enumerate(['X', 'O']):
             bots[index].clear_score()
@@ -37,17 +32,15 @@ class SingleRunner(GameRunnerBase):
 
         game_obj = SingleGame()
         game_info = game_obj.run(config, bots)
-        if (game_info is None):
+        if game_info is None:
             return
 
-        # Since 'silent' is always False for this runner, the game log will already
-        # have been output, so just write the game log to a new file.
-
+        # Since 'silent' is always False for this runner, the game log will
+        # already have been output, so just write the game log to a new file.
         try:
             with open(game_log_path, 'wt') as game_log_file:
                 game_log_file.write(game_obj.game_log)
         except IOError as e:
             log_error("Error writing game log file '{}': {}".
                       format(game_log_path, str(e)))
-
         return

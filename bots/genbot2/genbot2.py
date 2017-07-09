@@ -1,7 +1,4 @@
-"""
-Same as genbot1, except all of the moves are determined by the magic
-algorithm, not just the non-obvious ones.
-"""
+"""Same as genbot1, except all moves use the magic algorithm."""
 
 
 import os
@@ -10,7 +7,7 @@ import random
 
 from bots.genetic_bot_base import GeneticBot
 from bots.genbot2 import nodes
-from game.log import log_debug, log_error, log_trace
+from game.log import log_error
 
 
 class GENBOT2(GeneticBot):
@@ -30,13 +27,13 @@ class GENBOT2(GeneticBot):
         self.output_nodes = []
 
         self.initial_recipe = None
-        if (config['custom']):
+        if config['custom']:
             params = config['custom'].split(',')
             for param in params:
                 parts = param.split(':')
-                if (parts[0] == 'recipefile'):
+                if parts[0] == 'recipefile':
                     recipefn = parts[1]
-                    if (not os.path.exists(recipefn)):
+                    if not os.path.exists(recipefn):
                         log_error(
                             "Recipe file '{}' not found".format(recipefn))
                     else:
@@ -50,11 +47,12 @@ class GENBOT2(GeneticBot):
                             self.log_debug("Loaded recipe from file '{}'".
                                            format(recipefn))
                         except OSError as e:
-                            log_error("Error reading recipe from file '{}': {}".
+                            log_error("Error reading recipe from file "
+                                      "'{}': {}".
                                       format(recipefn, str(e)))
                             return
 
-        if (self.initial_recipe):
+        if self.initial_recipe:
             self.create_from_recipe(self.initial_recipe)
         else:
             self.create_brain()
@@ -97,7 +95,6 @@ class GENBOT2(GeneticBot):
             self.output_nodes.append(node)
 
         # And we're done.
-
         return
 
     @property
@@ -114,15 +111,10 @@ class GENBOT2(GeneticBot):
                 ingredient_blocks.append(str(input_node.index))
 
             recipe_blocks.append(':'.join(ingredient_blocks))
-
         return ','.join(recipe_blocks)
 
     def create_from_recipe(self, recipe):
-        """Create bot from recipe.
-
-        Args:
-            recipe: The recipe to create from.
-        """
+        """Create bot from recipe."""
         self.nodes = []
         self.output_nodes = []
 
@@ -134,31 +126,23 @@ class GENBOT2(GeneticBot):
             class_ = getattr(nodes, classname)
             instance = class_()
 
-            if (classname != 'NODE_INPUT'):
+            if classname != 'NODE_INPUT':
                 inputs_required = instance.num_inputs
                 assert len(ingredient_blocks) == inputs_required + 1
 
                 for input_number in ingredient_blocks[1:]:
                     instance.add_input_node(self.nodes[int(input_number)])
 
-            if (classname == 'NODE_OUTPUT'):
+            if classname == 'NODE_OUTPUT':
                 self.output_nodes.append(instance)
             else:
                 self.nodes.append(instance)
                 instance.index = node_index
                 node_index += 1
-
         return
 
     def mutate_recipe(self, recipe, num_mutations=1):
-        """Mutate the specified recipe.
-
-        Args:
-            recipe: The recipe to mutate.
-
-        Returns:
-            The mutated recipe.
-        """
+        """Mutate the specified recipe."""
         recipe_blocks = recipe.split(',')
 
         # Get list of non-output nodes.
@@ -167,7 +151,7 @@ class GENBOT2(GeneticBot):
         for index, block in enumerate(recipe_blocks):
             ingredient = block.split(':')
 
-            if (ingredient[0] == 'NODE_OUTPUT'):
+            if ingredient[0] == 'NODE_OUTPUT':
                 break
 
             normal_node_count += 1
@@ -183,12 +167,12 @@ class GENBOT2(GeneticBot):
                 ingredient_blocks = ingredient.split(':')
 
                 name = ingredient_blocks[0]
-                if (name == 'NODE_INPUT'):
+                if name == 'NODE_INPUT':
                     continue
 
                 node = None
 
-                if (name == 'NODE_OUTPUT'):
+                if name == 'NODE_OUTPUT':
                     class_ = getattr(nodes, name)
                     node = class_()
                 else:
@@ -211,15 +195,10 @@ class GENBOT2(GeneticBot):
                 # Replace the ingredient.
                 recipe_blocks[mutated_index] = ':'.join(new_ingredient_blocks)
                 break
-
         return ','.join(recipe_blocks)
 
     def get_random_node_instance(self):
-        """Create new random node instance.
-
-        Returns:
-            New NodeBase-derived instance.
-        """
+        """Create new random node instance."""
         nodepool = ['NOT',
                     'AND',
                     'OR',
@@ -238,13 +217,12 @@ class GENBOT2(GeneticBot):
         moves = self.get_possible_moves(current_board)
 
         # ENGAGE BRAIN
-
         self.log_trace('Engaging brain')
 
         # Populate input nodes with the current board state.
         i = 0
         for p in range(9):
-            if (current_board.getat(p) == ' '):
+            if current_board.getat(p) == ' ':
                 self.nodes[i].set_value(1)
             else:
                 self.nodes[i].set_value(0)
@@ -254,7 +232,7 @@ class GENBOT2(GeneticBot):
         my_id = self.identity
 
         for p in range(9):
-            if (current_board.getat(p) == my_id):
+            if current_board.getat(p) == my_id:
                 self.nodes[i].set_value(1)
             else:
                 self.nodes[i].set_value(0)
@@ -264,7 +242,7 @@ class GENBOT2(GeneticBot):
         their_id = self.other_identity
 
         for p in range(9):
-            if (current_board.getat(p) == their_id):
+            if current_board.getat(p) == their_id:
                 self.nodes[i].set_value(1)
             else:
                 self.nodes[i].set_value(0)
@@ -294,23 +272,4 @@ class GENBOT2(GeneticBot):
         selected_move = int(sorted_moves[0])
 
         return selected_move
-
         # END OF BRAIN ENGAGEMENT
-
-    def log_debug(self, message):
-        """Convenience method to log a message with the bot name as a prefix.
-
-        Args:
-            message: The log message.
-        """
-        log_debug("[GENBOT2]: " + message)
-        return
-
-    def log_trace(self, message):
-        """Convenience method to log a message with the bot name as a prefix.
-
-        Args:
-            message: The log message.
-        """
-        log_trace("[GENBOT2]: " + message)
-        return

@@ -1,6 +1,7 @@
 """
-This bot is intended to mimic genbot1, but without any of the genetic
-algorithm magic. It uses random choices instead. It serves as a 'control'
+This bot is intended to mimic genbot1, but without any magic.
+
+It uses random choices instead. It serves as a 'control'
 subject to compare against genbot1.
 """
 
@@ -9,12 +10,14 @@ import random
 
 
 from bots.genetic_bot_base import GeneticBot
-from game.log import log_debug
 
 
 class GENBOTCONTROL(GeneticBot):
-    """Control bot for genbot1. If genbot1 does no better than this bot, then
-    it is no better than random chance.
+    """
+    Control bot for genbot1.
+
+    If genbot1 does no better than this bot, then it is no better than random
+    chance.
     """
 
     def get_recipe(self):
@@ -25,7 +28,7 @@ class GENBOTCONTROL(GeneticBot):
         """Stub for creating a bot from a recipe. The recipe is ignored."""
         return
 
-    def mutate_recipe(self, recipe):
+    def mutate_recipe(self, recipe, num_mutations):
         """Stub for mutating a recipe. Just return the recipe."""
         return recipe
 
@@ -45,24 +48,24 @@ class GENBOTCONTROL(GeneticBot):
 
         for seq in straight_sequences:
             (ours, theirs, blanks) = self.get_sequence_info(current_board, seq)
-            if (len(ours) == 2 and len(blanks) == 1):
+            if len(ours) == 2 and len(blanks) == 1:
                 # Move into the blank for the win.
                 return int(blanks[0])
 
         # Second, if we can't win, make sure the opponent can't win either.
         for seq in straight_sequences:
             (ours, theirs, blanks) = self.get_sequence_info(current_board, seq)
-            if (len(theirs) == 2 and len(blanks) == 1):
+            if len(theirs) == 2 and len(blanks) == 1:
                 # Move into the blank to block the win.
                 return int(blanks[0])
 
         # If this is the first move...
         (ours, theirs, blanks) = self.get_sequence_info(current_board,
                                                         '012345678')
-        if (len(ours) == 0):
+        if not ours:
             # If we're the second player:
-            if (len(theirs) > 0):
-                if (4 in moves):
+            if theirs:
+                if 4 in moves:
                     return 4
 
                 # Otherwise take the upper left.
@@ -75,12 +78,3 @@ class GENBOTCONTROL(GeneticBot):
 
         return random.choice(moves)
         # END OF 'FAKE' BRAIN ENGAGEMENT
-
-    def log_debug(self, message):
-        """Convenience method to log a message with the bot name as a prefix.
-
-        Args:
-            message: The log message.
-        """
-        log_debug("[GENBOTCONTROL]: " + message)
-        return

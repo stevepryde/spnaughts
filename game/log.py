@@ -1,7 +1,6 @@
 """Module providing simple logging capabilities."""
 
 
-import collections
 import datetime
 import logging
 import os
@@ -22,17 +21,15 @@ COLOURS = {'trace': 'yellow',
            'info': 'green',
            'warning': 'blue',
            'error': 'magenta',
-           'critical': 'red'
-           }
+           'critical': 'red'}
 
 
 def init_default_logger(logpath, **kwargs):
-    """Init default logger.
-
-    Args:
-        logpath: The base path for the log file.
     """
+    Init default logger.
 
+    :param logpath: The base path for the log file.
+    """
     ts = str(datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S%f'))
     logfn = os.path.join(logpath, "logfile_" + ts + ".log")
     init_logger(DEFAULT_LOG_NAME, logfn, **kwargs)
@@ -40,15 +37,13 @@ def init_default_logger(logpath, **kwargs):
 
 
 def init_logger(name, logfn, console_logging=False):
-    """Init logger.
-
-    Args:
-        name: The log name.
-        logfn: The filename for this log.
-        console_logging: True if the log should also log to the console.
-
     """
+    Init logger.
 
+    :param name: The log name.
+    :param logfn: The filename for this log.
+    :param console_logging: True if the log should also log to the console.
+    """
     # Create logger.
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
@@ -65,7 +60,7 @@ def init_logger(name, logfn, console_logging=False):
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
-    if (console_logging):
+    if console_logging:
         # Create console handler with a higher log level.
         ch = RainbowLoggingHandler(
             sys.stdout,
@@ -79,21 +74,12 @@ def init_logger(name, logfn, console_logging=False):
         ch.setLevel(logging.DEBUG)
         ch.setFormatter(formatter)
         logger.addHandler(ch)
-
     return
 
 
 def get_lines(text):
-    """Convert the string (or list of strings) into a list of lines.
-
-    Args:
-        text: String of text. May be a list of strings.
-
-    Returns:
-        List of lines, as strings.
-    """
-
-    if (type(text) is not list):
+    """Convert the string (or list of strings) into a list of lines."""
+    if not isinstance(text, list):
         text = [text]
 
     lines = []
@@ -102,24 +88,17 @@ def get_lines(text):
         sublines = line.split("\n")
         for subline in sublines:
             lines.append(subline)
-
     return lines
 
 
 def write_log(*args, **kwargs):
-    """Convenient alias for log_info()."""
+    """Alias for log_info()."""
     log_info(*args, **kwargs)
     return
 
 
 def log_info(text, log_name=DEFAULT_LOG_NAME):
-    """Write text to the log at INFO level.
-
-    Args:
-        text: The text to write.
-        log_name: The name of the log.
-
-    """
+    """Write text to the log at INFO level."""
     logobj = logging.getLogger(log_name)
     lines = get_lines(text)
     for line in lines:
@@ -128,29 +107,16 @@ def log_info(text, log_name=DEFAULT_LOG_NAME):
 
 
 def log_error(text, log_name=DEFAULT_LOG_NAME):
-    """Write text to the log at ERROR level.
-
-    Args:
-        text: The text to write.
-        log_name: The name of the log.
-
-    """
+    """Write text to the log at ERROR level."""
     logobj = logging.getLogger(log_name)
     lines = get_lines(text)
     for line in lines:
         logobj.error(line)
-
     return
 
 
 def log_warning(text, log_name=DEFAULT_LOG_NAME):
-    """Write text to the log at WARNING level.
-
-    Args:
-        text: The text to write.
-        log_name: The name of the log.
-
-    """
+    """Write text to the log at WARNING level."""
     logobj = logging.getLogger(log_name)
     lines = get_lines(text)
     for line in lines:
@@ -160,53 +126,33 @@ def log_warning(text, log_name=DEFAULT_LOG_NAME):
 
 
 def log_debug(text, log_name=DEFAULT_LOG_NAME):
-    """Write text to the log at DEBUG level.
-
-    Args:
-        text: The text to write.
-        log_name: The name of the log.
-
-    """
+    """Write text to the log at DEBUG level."""
     logobj = logging.getLogger(log_name)
     lines = get_lines(text)
     for line in lines:
         logobj.debug(line)
-
     return
 
 
 def log_trace(text, log_name=DEFAULT_LOG_NAME):
-    """Write text to the log at TRACE level.
+    """
+    Write text to the log at TRACE level.
 
     Trace is the same as debug but is only output when TRACE is True.
     See the constant at the top of this module.
-
-    Args:
-        text: The text to write.
-        log_name: The name of the log.
-
     """
-
     if (TRACE):
         logobj = logging.getLogger(log_name)
         lines = get_lines(text)
         for line in lines:
             logobj.debug(line)
-
     return
 
 
 def log_critical(text, log_name=DEFAULT_LOG_NAME):
-    """Write text to the log at CRITICAL level.
-
-    Args:
-        text: The text to write.
-        log_name: The name of the log.
-
-    """
+    """Write text to the log at CRITICAL level."""
     logobj = logging.getLogger(log_name)
     lines = get_lines(text)
     for line in lines:
         logobj.critical(line)
-
     return

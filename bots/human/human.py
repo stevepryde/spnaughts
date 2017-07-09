@@ -1,7 +1,7 @@
 """
-This bot accepts input via the keyboard for every move. This allows manual
-games with human vs another bot.
+This bot accepts input via the keyboard for every move.
 
+This allows manual games with human vs another bot.
 Not practical in batch mode or genetic mode.
 """
 
@@ -20,13 +20,13 @@ class HUMAN(Bot):
         info_str = 'possible moves are [{}]'.format(','.join(moves))
 
         # If there's only one choice, save ourselves some typing.
-        if (len(moves) == 1):
+        if len(moves) == 1:
             move = int(moves[0])
             print("{} (Automatically choose {})".format(info_str, move))
             return move
 
         move = -1
-        while (move not in moves):
+        while move not in moves:
             try:
                 move = int(input(info_str))
             except ValueError:

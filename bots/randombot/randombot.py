@@ -1,4 +1,6 @@
-"""This bot just executes moves at random. It is a useful baseline.
+"""
+This bot just executes moves at random. It is a useful baseline.
+
 It is also very useful for training and testing AI bots.
 """
 

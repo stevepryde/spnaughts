@@ -9,15 +9,17 @@ from bots.genbot2.nodebase import NodeBase, NodeBase2
 
 
 class NODE_INPUT(NodeBase):
-    """The input node is a custom node that gets pre-set with each move. This is
-    done by the robot itself, by reading the game board and populating each
-    input node manually.
+    """
+    The input node is a custom node that gets pre-set with each move.
+
+    This is done by the robot itself, by reading the game board and populating
+    each input node manually.
 
     This node is not available for inclusion in the rest of the brain.
     """
 
     def set_value(self, value):
-        """Set the value for this node. This method is unique to input nodes."""
+        """Set the value for this node. Unique to input nodes."""
         self.output = value
         return
 
@@ -51,7 +53,7 @@ class NODE_XOR(NodeBase2):
 
     def process(self, inputs):
         """Process this node."""
-        if (inputs[0] and inputs[1]):
+        if inputs[0] and inputs[1]:
             return 0
 
         return inputs[0] or inputs[1]
@@ -62,7 +64,7 @@ class NODE_NAND(NodeBase2):
 
     def process(self, inputs):
         """Process this node."""
-        if (inputs[0] and inputs[1]):
+        if inputs[0] and inputs[1]:
             return 0
 
         return 1
@@ -73,7 +75,7 @@ class NODE_NOR(NodeBase2):
 
     def process(self, inputs):
         """Process this node."""
-        if (inputs[0] or inputs[1]):
+        if inputs[0] or inputs[1]:
             return 0
 
         return 1
@@ -84,17 +86,19 @@ class NODE_XNOR(NodeBase2):
 
     def process(self, inputs):
         """Process this node."""
-        if (inputs[0] and inputs[1]):
+        if inputs[0] and inputs[1]:
             return 1
 
-        if (inputs[0] or inputs[1]):
+        if inputs[0] or inputs[1]:
             return 0
 
         return 1
 
 
 class NODE_OUTPUT(NodeBase):
-    """This node is just one idea for ways to generate an output node.
+    """
+    This node is just one idea for ways to generate an output node.
+
     The more inputs, the more easily we can sort between outcomes.
     The number of inputs should be at least the number of possible actions.
     """
@@ -102,7 +106,7 @@ class NODE_OUTPUT(NodeBase):
     def __init__(self):
         """Create output node."""
         super().__init__()
-        self.num_inputs = 10 # Some number greater than 9.
+        self.num_inputs = 10  # Some number greater than 9.
         return
 
     def process(self, inputs):

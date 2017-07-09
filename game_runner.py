@@ -15,56 +15,36 @@ from game.runners import singlerunner, batchrunner, geneticrunner
 LOG_BASE_PATH = 'logs'
 DATA_BASE_PATH = 'data'
 
+
 def quit_game(message='Exiting...'):
-    """Quit the game, displaying a message.
-
-    Args:
-        message: The debug message to display.
-    """
-
+    """Quit the game, displaying a message."""
     log_debug(message)
     sys.exit(1)
 
 
 def check_int1plus(value):
-    """Check that value is an int greater than one.
-
-    Args:
-        value: The value to check.
-
-    Returns:
-        The value if valid.
-    """
+    """Validator for checking that value is an int greater than one."""
     try:
         ivalue = int(value)
-        if (ivalue <= 0):
+        if ivalue <= 0:
             raise argparse.ArgumentTypeError("Expected an int greater than "
                                              "one, but got {}".format(ivalue))
     except ValueError:
         raise argparse.ArgumentTypeError("Expected an int, but got '{}'".
                                          format(value))
-
     return ivalue
 
 
 def check_int0plus(value):
-    """Check that value is an int greater than zero.
-
-    Args:
-        value: The value to check.
-
-    Returns:
-        The value if valid.
-    """
+    """Validator for checking that value is an int greater than zero."""
     try:
         ivalue = int(value)
-        if (ivalue < 0):
+        if ivalue < 0:
             raise argparse.ArgumentTypeError("Expected an int greater than "
                                              "zero, but got {}".format(ivalue))
     except ValueError:
         raise argparse.ArgumentTypeError("Expected an int, but got '{}'".
                                          format(value))
-
     return ivalue
 
 
@@ -100,7 +80,7 @@ def parse_config():
                              'disk space!)')
     args = parser.parse_args()
 
-    if (not args.bot1 or not args.bot2):
+    if not args.bot1 or not args.bot2:
         print("You need to specify two bots")
         sys.exit(1)
 
@@ -117,14 +97,14 @@ def parse_config():
                         'top']
 
     args_dict = vars(args)
-    if (args.batch is None):
+    if args.batch is None:
         for req in requires_batch:
-            if (req in args_dict and args_dict[req]):
+            if req in args_dict and args_dict[req]:
                 parser.error("Option --{} requires --batch".format(req))
 
-    if (not args.genetic):
+    if not args.genetic:
         for req in requires_genetic:
-            if (req in args_dict and args_dict[req]):
+            if req in args_dict and args_dict[req]:
                 parser.error("Option --{} requires --genetic".format(req))
 
     # Set the relevant config based on provided args.
@@ -133,15 +113,14 @@ def parse_config():
     config['genetic_mode'] = False
     config['no_batch_summary'] = False
 
-    if (args.stoponloss):
+    if args.stoponloss:
         config['stoponloss'] = args.stoponloss
 
     config['custom'] = None
-    if (args.custom):
+    if args.custom:
         config['custom'] = args.custom
 
     config['loggames'] = args.loggames
-
     config['num_games'] = 1
     config['num_generations'] = 1
     config['num_samples'] = 1
@@ -149,23 +128,23 @@ def parse_config():
     config['bot1'] = args.bot1
     config['bot2'] = args.bot2
 
-    if (args.batch is not None):
+    if args.batch is not None:
         config['batch_mode'] = True
         config['silent'] = True
         config['num_games'] = int(args.batch)
 
-        if (args.genetic):
+        if args.genetic:
             config['genetic_mode'] = True
             config['no_batch_summary'] = True
             config['num_generations'] = int(args.genetic)
 
-            if (args.samples):
+            if args.samples:
                 config['num_samples'] = int(args.samples)
 
-            if (args.keep):
+            if args.keep:
                 config['keep_samples'] = int(args.keep)
 
-            if (args.top):
+            if args.top:
                 config['use_top_bots'] = True
 
     return config
@@ -207,10 +186,10 @@ if __name__ == '__main__':
 
     try:
         runner = None
-        if (config['genetic_mode']):
+        if config['genetic_mode']:
             log_info("Using GENETIC game runner")
             runner = geneticrunner.GeneticRunner()
-        elif (config['batch_mode']):
+        elif config['batch_mode']:
             log_info("Using BATCH game runner")
             runner = batchrunner.BatchRunner()
         else:
