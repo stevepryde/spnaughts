@@ -13,33 +13,16 @@ class NodeBase:
         return
 
     def add_input_node(self, node):
-        """Append the specified node to the list of input nodes.
-
-        Args:
-            node: The node to append.
-        """
+        """Append the specified node to the list of input nodes."""
         self.input_nodes.append(node)
         return
 
     def process(self, inputs):
-        """Process this node, given the specified inputs.
-
-        Args:
-            inputs: The values from input nodes.
-
-        Returns:
-            Some value determined by the inputs plus some logic.
-        """
+        """Process this node, given the specified inputs."""
         return 1
 
     def update(self):
-        """
-        Process this node, getting the output values from each of the linked
-        inputs, and passing those values to process(), and then storing the
-        returned value in self.output.
-        By calling update() on every node in sequence, we can process the
-        entire tree.
-        """
+        """Process this node."""
         inputs = []
         for node in self.input_nodes:
             inputs.append(node.output)

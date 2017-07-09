@@ -11,12 +11,7 @@ class BatchRunner(GameRunnerBase):
     """Batch game runner."""
 
     def run(self, config, bots):
-        """Run a batch of games.
-
-        Args:
-            config: The configuration details.
-            bots: List of bots to run.
-        """
+        """Run a batch of games."""
         # Set up log.
         log_base_dir = config['log_base_dir']
 

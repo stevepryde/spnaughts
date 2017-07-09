@@ -9,10 +9,5 @@ class GameRunnerBase:
         return
 
     def run(self, config, bots):
-        """Run one or more games using this Game Runner.
-
-        Args:
-            config: The game configuration.
-            bots: List of bots to run.
-        """
+        """Run one or more games using this Game Runner."""
         return

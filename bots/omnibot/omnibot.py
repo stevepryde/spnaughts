@@ -14,8 +14,11 @@ from bots.bot_base import Bot
 
 
 class OMNIBOT(Bot):
-    """Special bot that returns all available moves, so that cloned games can
-    be spawned for each one. Consider this the British Museum algorithm.
+    """
+    Special bot that returns all available moves.
+
+    This way cloned games can be spawned for each one.
+    Consider this the British Museum algorithm.
     """
 
     def do_turn(self, current_board):

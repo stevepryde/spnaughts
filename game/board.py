@@ -6,6 +6,7 @@ It consists of 9 characters,
 - = blank space. X and O are represented by exactly those letters (uppercase).
 """
 
+
 class Board:
     """Representation of a naughts and crosses board."""
 
@@ -14,54 +15,43 @@ class Board:
         self.data = '---------'
         return
 
-
-
-
     def copy(self):
-        """Clone this Board instance.
-
-        Returns:
-            New Board object that is a clone of this instance.
-        """
-
+        """Clone this Board instance."""
         b = Board()
         b.data = self.data
         return b
 
     def getat(self, pos):
-        """Get the character at the specified position.
+        """
+        Get the character at the specified position.
 
-        Args:
-            pos: The 0-based position within 'data'.
-                 i.e.
-                  0 | 1 | 2
-                 -----------
-                  3 | 4 | 5
-                 -----------
-                  6 | 7 | 8
+        :param pos: The 0-based position within 'data'.
+            i.e.
+            0 | 1 | 2
+            -----------
+            3 | 4 | 5
+            -----------
+            6 | 7 | 8
 
-        Returns:
-            Character at the specified position. One of 'X', 'O', or ' '.
+        :returns: Character at the specified position. One of 'X', 'O', or ' '.
         """
         c = self.data[int(pos)]
-        if (c == '-'):
+        if c == '-':
             c = ' '
-
         return c
 
     def setat(self, pos, turn):
         """Set the character at the specified position.
 
-        Args:
-            pos: The 0-based position within 'data'.
-                 i.e.
-                  0 | 1 | 2
-                 -----------
-                  3 | 4 | 5
-                 -----------
-                  6 | 7 | 8
+        :param pos: The 0-based position within 'data'.
+            i.e.
+            0 | 1 | 2
+            -----------
+            3 | 4 | 5
+            -----------
+            6 | 7 | 8
 
-            turn: The character to set.
+        :param turn: The character to set.
         """
         c = self.getat(pos)
         assert c == ' ', ("Tried setting '{}' at pos {} but it already "
@@ -78,22 +68,17 @@ class Board:
         return
 
     def show(self, indent=0):
-        """Print the current board contents, with optional indent.
-
-        Args:
-            indent: The number of spaces to use as indent. Default is 0.
-        """
-
+        """Print the current board contents, with optional indent."""
         prefix = '  '
-        if (indent > 0):
+        if indent > 0:
             prefix += ' ' * indent
 
         i = 0
-        for r in range(0,3):
+        for r in range(0, 3):
             print(prefix + " {} | {} | {} ".
-                  format(self.getat(i), self.getat(i+1), self.getat(i+2)))
+                  format(self.getat(i), self.getat(i + 1), self.getat(i + 2)))
 
-            if (r < 2):
+            if r < 2:
                 print(prefix + "-----------")
 
             i += 3
@@ -102,16 +87,15 @@ class Board:
         return
 
     def get_game_state(self):
-        """Get current game state.
+        """
+        Get current game state.
 
-        Returns:
-            Current game state, as int.
+        :returns: Current game state, as int.
             0 = Not completed.
             1 = X win.
             2 = O win.
             3 = draw.
         """
-
         sequences = ['012',
                      '345',
                      '678',
@@ -119,56 +103,42 @@ class Board:
                      '147',
                      '258',
                      '048',
-                     '246'
-                     ]
+                     '246']
 
         for seq in sequences:
             val = ''
-            for n in range(len(seq)):
-                c = seq[n]
+            for c in seq:
                 val += self.getat(int(c))
 
-            if (val == 'XXX'):
+            if val == 'XXX':
                 return 1
-            elif (val == 'OOO'):
+            elif val == 'OOO':
                 return 2
 
             is_draw = True
             for pos in range(9):
                 val = self.getat(pos)
-                if (val != 'X' and val != 'O'):
+                if val != 'X' and val != 'O':
                     is_draw = False
 
-            if (is_draw):
+            if is_draw:
                 return 3
-
         return 0
 
     def is_ended(self):
-        """Return True if game has ended.
-
-        Returns:
-            True if the game has ended, otherwise False.
-        """
+        """Return True if game has ended, otherwise False."""
         return self.get_game_state() != 0
 
     def get_winner(self):
-        """Get the game winner, if there is one.
-
-        Returns:
-            Character identifying the game winner, or None if the game has not
-            been won (includes draw).
-        """
+        """Get the game winner, if there is one."""
         state = self.get_game_state()
 
-        if (state == 1):
+        if state == 1:
             return 'X'
 
-        if (state == 2):
+        if state == 2:
             return 'O'
-
         return
-
 
     ##########################################################
     # HELPER METHODS for use in bots.
@@ -176,43 +146,37 @@ class Board:
 
     def getat_multi(self, pos_str):
         """
-        Return a string containing just the contents at the specified positions.
-        For example, if I pass in '012', it will return a string identifying the
-        contents of the top row.
+        Return the contents at the specified positions.
 
-        Args:
-            pos_str: List of positions.
+        For example, if I pass in '012', it will return a string identifying
+        the contents of the top row.
 
-        Returns:
-            String containing the characters at the specified positions.
+        :param pos_str: List of positions.
+        :returns: String containing the characters at the specified positions.
         """
-
         contents = ''
         for n in range(len(pos_str)):
             contents += self.getat(int(pos_str[n]))
-
         return contents
 
     def get_rotated_board(self, rotations):
         """
         Return a copy of the board, rotated 90/180/270 degrees clockwise.
+
         The number of rotations is 1 for 90 degrees, 2 for 180 degrees,
         and 3 for 270 degrees.
 
-        Args:
-            rotations: Number of 90 degree rotations in a clockwise direction.
-
-        Returns:
-            Board object that is a rotated copy of this one.
+        :param rotations: Number of 90 degree rotations in a clockwise
+            direction.
+        :returns: Board object that is a rotated copy of this one.
         """
-
         rotations = int(rotations) % 4
 
         board_copy = self.copy()
         transform_map = [6, 3, 0, 7, 4, 1, 8, 5, 2]
 
         # Minor optimisation. Don't do anything if we don't have to.
-        if (rotations == 0):
+        if rotations == 0:
             return board_copy
 
         for _ in range(rotations):
@@ -223,22 +187,13 @@ class Board:
                 new_data[index] = orig_data[pos]
 
             board_copy.data = ''.join(new_data)
-
         return board_copy
 
     def get_first_empty_space(self, positions):
-        """Get the first empty position from the list of positions.
-
-        Args:
-            positions: List of positions to check.
-
-        Returns:
-            First empty position as int, or -1 if no position was empty.
-        """
+        """Get the first empty position from the list of positions."""
         pos_list = list(positions)
 
         for pos in pos_list:
             if (self.getat(int(pos)) == ' '):
                 return int(pos)
-
         return -1
