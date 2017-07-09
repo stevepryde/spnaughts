@@ -1,39 +1,35 @@
-#########################################
-#
-# NAUGHTS AND CROSSES ROBOT AI EXPERIMENT
-#
-#########################################
+# NAUGHTS AND CROSSES AI EXPERIMENT
 
 SP Naughts is a simple naughts and crosses "game" including a collection of
 AI bots.
 
-Run games using game_runner.py:
+## Run games using game_runner.py:
 
-$ ./game_runner.py -h
-usage: game_runner.py [-h] [--batch BATCH] [--stoponloss STOPONLOSS]
-                      [--genetic GENETIC] [--samples SAMPLES] [--keep KEEP]
-                      [--custom CUSTOM] [--loggames]
-                      robot1 robot2
+    $ ./game_runner.py -h
+    usage: game_runner.py [-h] [--batch BATCH] [--stoponloss STOPONLOSS]
+                          [--genetic GENETIC] [--samples SAMPLES] [--keep KEEP]
+                          [--custom CUSTOM] [--loggames]
+                          robot1 robot2
 
-Game Runner
+    Game Runner
 
-positional arguments:
-  robot1                First robot, e.g. "human"
-  robot2                Second robot
+    positional arguments:
+      robot1                First robot, e.g. "human"
+      robot2                Second robot
 
-optional arguments:
-  -h, --help            show this help message and exit
-  --batch BATCH         Batch mode. Specify the number of games to run
-  --stoponloss STOPONLOSS
-                        Stop if the specified player loses
-  --genetic GENETIC     Genetic mode. Specify number of generations to run
-                        (Requires --batch)
-  --samples SAMPLES     Number of samples per generation. (Requires --genetic)
-  --keep KEEP           Number of winning samples to "keep" (Requires
-                        --genetic)
-  --custom CUSTOM       Custom argument (passed to bot)
-  --loggames            Also log individual games (may require a lot of disk
-                        space!)
+    optional arguments:
+      -h, --help            show this help message and exit
+      --batch BATCH         Batch mode. Specify the number of games to run
+      --stoponloss STOPONLOSS
+                            Stop if the specified player loses
+      --genetic GENETIC     Genetic mode. Specify number of generations to run
+                            (Requires --batch)
+      --samples SAMPLES     Number of samples per generation. (Requires --genetic)
+      --keep KEEP           Number of winning samples to "keep" (Requires
+                            --genetic)
+      --custom CUSTOM       Custom argument (passed to bot)
+      --loggames            Also log individual games (may require a lot of disk
+                            space!)
 
 You need to specify two robots, followed by optional arguments.
 
@@ -42,12 +38,11 @@ robots/ directory to find them.
 
 The first robot is always X, and will make the first move.
 
-SINGLE MODE
------------
+## SINGLE MODE
 
 For example:
 
-$ ./game_runner.py randombot human
+    $ ./game_runner.py randombot human
 
 This will run a single game where randombot plays against a human player.
 
@@ -57,26 +52,24 @@ to run the human player in anything other than single game mode.
 Game log files are output into the logs/ directory. This directory will be
 created if it does not exist.
 
-BATCH MODE
-----------
+## BATCH MODE
 
 Use the --batch option to run a batch of games in a row.
 
 For example:
 
-$ ./game_runner.py randombot simplebot --batch 1000
+    $ ./game_runner.py randombot simplebot --batch 1000
 
 This will run a batch of 1000 games and then output a summary at the end.
 
-GENETIC MODE
-------------
+## GENETIC MODE
 
 This is the mode used to run bots based on a genetic algorithm. One and only
 one of the bots must be a genetic bot to run in this mode.
 
 For example:
 
-$ ./game_runner.py randombot genbot1 --batch 1000 --samples 50 --genetic 10
+    $ ./game_runner.py randombot genbot1 --batch 1000 --samples 50 --genetic 10
 
 This will run the randombot (as 'X') against the genbot1 (as 'O'), over 10
 generations. Each generation will have 50 samples. Each 'sample' will execute
@@ -94,14 +87,12 @@ To run a single game or batch against a particular recipe or to start a genetic
 mode run from an existing recipe, simply copy the recipe from the relevant log
 and paste it into its own file. Then supply that file on the CLI as follows:
 
-$ ./game_runner.py randombot genbot1 --batch 1000 \
---custom recipefile:/path/to/file
+    $ ./game_runner.py randombot genbot1 --batch 1000 --custom recipefile:/path/to/file
 
 This will run a batch of 1000 games with randombot against a genbot1 that is
 loaded from the particular recipe that has been supplied.
 
-ROBOTS
-------
+## ROBOTS
 
 The interesting 'bots' included are as follows:
 - randombot
@@ -145,8 +136,7 @@ The interesting 'bots' included are as follows:
 There are a couple of other bots included as well, that I used for testing.
 See the documentation at the top of each source file for more details.
 
-LATEST NEWS:
-------------
+## LATEST NEWS
 
 As indicated above, the latest additions include genbot2 and omnibot, which
 work together to "train" genbot2 more reliably than any previous method.
@@ -154,7 +144,7 @@ work together to "train" genbot2 more reliably than any previous method.
 I am not aware of any "ideal" settings to use for testing genbot2, but the
 following command line is what I typically use:
 
-./game_runner.py omnibot genbot2 --batch 0 --genetic 100 --samples 50 --keep 3
+    $ ./game_runner.py omnibot genbot2 --batch 0 --genetic 100 --samples 50 --keep 3
 
 This will run the omnibot against genbot2, using the 'magic' batch runner
 (which just means taking advantage of omnibot to follow every possible path),
@@ -168,8 +158,7 @@ When running with omnibot, scores should be repeatable, and can be used to
 compare different bots. Losses are weighted 10x more heavily than wins. I have
 seen scores above -10 within 100 generations using the above settings.
 
-FUTURE
-------
+## FUTURE
 
 There is plenty of scope for future improvement.
 
