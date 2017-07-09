@@ -163,7 +163,7 @@ class SingleGame:
         """
         self.start(config, bots)
 
-        while (not self.is_ended):
+        while (not self.is_ended()):
             self.do_turn()
 
         game_info = self.get_game_info()
@@ -191,15 +191,15 @@ class SingleGame:
         score_O = self.calculate_score(self.num_turns['O'], result == 2,
                                        result == 3)
 
-        if (result == 1): # X wins
+        if (result == 1):  # X wins
             self.log_game("Bot '{}' wins".format(self.bots[0].name))
             self.bots[0].process_result('WIN', score_X)
             self.bots[1].process_result('LOSS', score_O)
-        elif (result == 2): # O wins
+        elif (result == 2):  # O wins
             self.log_game("Bot '{}' wins".format(self.bots[1].name))
             self.bots[0].process_result('LOSS', score_X)
             self.bots[1].process_result('WIN', score_O)
-        elif (result == 3): # Tie
+        elif (result == 3):  # Tie
             self.log_game("It's a TIE")
             self.bots[0].process_result('TIE', score_X)
             self.bots[1].process_result('TIE', score_O)
@@ -211,8 +211,8 @@ class SingleGame:
                       format(self.bots[0].name, score_X,
                              self.bots[1].name, score_O))
 
-        game_info = {'result':result,
-                     'scores':{'X': score_X, 'O': score_O}}
+        game_info = {'result': result,
+                     'scores': {'X': score_X, 'O': score_O}}
         return game_info
 
     def calculate_score(self, num_turns, is_win, is_draw):
