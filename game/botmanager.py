@@ -20,8 +20,9 @@ BOT_TEMP_PATH = 'tempdata'
 class BotManager(object):
     """Manage creation of bots."""
 
-    def __init__(self):
+    def __init__(self, config):
         """Create new BotManager."""
+        self.config = config
         return
 
     def create_bot(self, module_name):
@@ -44,17 +45,17 @@ class BotManager(object):
         bot_obj.set_temp_path_base(BOT_TEMP_PATH)
         return bot_obj
 
-    def create_bots(self, config):
+    def create_bots(self):
         """Create multiple bots, as per specified config."""
         bots = []
-        for bot_name in (config['bot1'], config['bot2']):
+        for bot_name in (self.config.bot1, self.config.bot2):
             bot_obj = self.create_bot(bot_name)
             if not bot_obj:
                 log_critical("Error instantiating bot '{}'".format(bot_name))
                 return
 
             bot_obj.name = bot_name
-            bot_obj.create(config)
+            bot_obj.create(self.config)
             bots.append(bot_obj)
 
         return bots

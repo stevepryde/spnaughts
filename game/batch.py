@@ -3,7 +3,6 @@
 
 import collections
 
-from game.singlegame import SingleGame
 from game.log import log_error
 
 
@@ -14,18 +13,20 @@ class Batch:
         """
         Create a new Batch.
 
-        :param config: Dictionary of configuration details.
+        :param config: GameConfig object.
         :param bots: List of bots to run.
         """
-        self.batch_log_lines = []
-        self.batch_summary_lines = []
         self.config = config
         self.bots = bots
+
+        self.batch_log_lines = []
+        self.batch_summary_lines = []
         self.label = ""
         self.batch_info = {}
 
-        # Init details used during the running of the batch.
-        self.start_batch()
+        self.overall_results = {1: 0, 2: 0, 3: 0}
+        self.num_games_played = 0
+        self.total_score = {}
         return
 
     @property
@@ -65,9 +66,7 @@ class Batch:
         """Run this batch and return the average scores."""
         self.start_batch()
 
-        # Run the batch, either using the normal batch runner or the 'magic'
-        # one, depending on the 'num_games' setting.
-        if self.config['num_games'] == 0:
+        if self.config.batch_size == 0:
             self.run_magic_batch()
         else:
             self.run_normal_batch()
@@ -78,13 +77,14 @@ class Batch:
     def start_batch(self):
         """Start this batch."""
         # Run a single batch.
-        for index, identity in enumerate(['X', 'O']):
+        class_ = self.config.get_game_class()
+        for index, identity in enumerate(class_.identities):
             self.bots[index].clear_score()
             self.bots[index].identity = identity
+            self.total_score[identity] = 0
 
         self.overall_results = {1: 0, 2: 0, 3: 0}
         self.num_games_played = 0
-        self.total_score = {'X': 0, 'O': 0}
         return
 
     def process_game_result(self, game_num, game_info):
@@ -92,28 +92,33 @@ class Batch:
         result = game_info['result']
 
         self.num_games_played += 1
-        self.total_score['X'] += game_info['scores']['X']
-        self.total_score['O'] += game_info['scores']['O']
+        class_ = self.config.get_game_class()
+        identities = class_.identities
+        for identity in identities:
+            self.total_score[identity] += game_info['scores'][identity]
 
-        if result == 1:
-            self.log_summary("Game {}: '{}' WINS".
-                             format(game_num, self.bots[0].name))
-            if self.config.get('stoponloss', '') == 'O':
-                self.log_summary("Stopping because O lost a game and "
-                                 "--stoponloss O was specified")
-                return
-        elif result == 2:
-            self.log_summary("Game {}: '{}' WINS".
-                             format(game_num, self.bots[1].name))
-            if self.config.get('stoponloss', '') == 'X':
-                self.log_summary("Stopping because X lost a game and "
-                                 "--stoponloss X was specified")
-                return
-        elif result == 3:
+        bot_name = ''
+        identity_loss = ''
+        if result == 3:
             self.log_summary("Game {}: TIE".format(game_num))
         else:
-            log_error("Invalid result received: '{}'".format(result))
-            return
+            if result == 1:
+                identity_loss = identities[1]
+                bot_name = self.bots[0].name
+            elif result == 2:
+                identity_loss = identities[1]
+                bot_name = self.bots[1].name
+            else:
+                log_error("Invalid result received: '{}'".format(result))
+                return
+
+            self.log_summary("Game {}: '{}' WINS".
+                             format(game_num, bot_name))
+            if self.config.stop_on_loss == identity_loss:
+                self.log_summary("Stopping because {0} lost a game and "
+                                 "--stoponloss {0} was specified".
+                                 format(identity_loss))
+                return
 
         if result not in self.overall_results:
             log_error("No record of {} in overall_results".format(result))
@@ -141,21 +146,25 @@ class Batch:
 
         # Get average scores.
         if self.num_games_played > 0:
-            avg_score_X = float(self.total_score['X'] / self.num_games_played)
-            avg_score_O = float(self.total_score['O'] / self.num_games_played)
+            class_ = self.config.get_game_class()
+            identities = class_.identities
+            avg_score = []
+            for identity in identities:
+                avg_score.append(
+                    float(self.total_score[identity] / self.num_games_played))
 
-            self.bots[0].score = avg_score_X
-            self.bots[1].score = avg_score_O
+            self.bots[0].score = avg_score[0]
+            self.bots[1].score = avg_score[1]
 
             self.log_batch("\nAverage Scores: '{}':{:.2f} , '{}':{:.2f}".
-                           format(self.bots[0].name, avg_score_X,
-                                  self.bots[1].name, avg_score_O))
+                           format(self.bots[0].name, avg_score[0],
+                                  self.bots[1].name, avg_score[1]))
 
             self.log_summary("AVERAGE SCORES:\n'{}':{:.2f}\n'{}':{:.2f}".
-                             format(self.bots[0].name, avg_score_X,
-                                    self.bots[1].name, avg_score_O))
+                             format(self.bots[0].name, avg_score[0],
+                                    self.bots[1].name, avg_score[1]))
 
-            return [avg_score_X, avg_score_O]
+            return avg_score
         return [0, 0]
 
     def run_normal_batch(self):
@@ -164,8 +173,8 @@ class Batch:
             self.log_batch("\n********** Running game {} **********\n".
                            format(game_num))
 
-            game_obj = SingleGame()
-            game_info = game_obj.run(self.config, self.bots)
+            game_obj = self.config.get_game_obj()
+            game_info = game_obj.run(self.bots)
             if game_info is None:
                 log_error("Game {} failed!".format(game_num))
                 return
@@ -178,8 +187,8 @@ class Batch:
     def run_magic_batch(self):
         """Pseudo-batch that actually runs every possible move combination."""
         game_num = 0
-        game_obj_initial = SingleGame()
-        game_obj_initial.start(self.config, self.bots)
+        game_obj_initial = self.config.get_game_obj()
+        game_obj_initial.start(self.bots)
 
         game_queue = collections.deque()
         game_queue.append(game_obj_initial)

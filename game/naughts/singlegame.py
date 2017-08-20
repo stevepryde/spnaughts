@@ -2,42 +2,29 @@
 
 
 from game.log import log_error
-import game.board as board
+from game.gamebase import GameBase
+from game.naughts import board
 
 
-class SingleGame:
+class SingleGame(GameBase):
     """Run a single game of naughts and crosses."""
 
-    def __init__(self):
+    identities = ('X', 'O')
+
+    def __init__(self, config):
         """Create a new SingleGame object."""
-        self.game_log_lines = []
-        self.config = None
-        self.bots = []
+        super().__init__(config)
         self.game_board = None
         self.current_bot_id = 0
-        self.num_turns = {'O': 0, 'X': 0}
         return
-
-    @property
-    def game_log(self):
-        """The full game log."""
-        return "\n".join(self.game_log_lines)
 
     def is_ended(self):
         """Return True if the game has ended, otherwise False."""
         return self.game_board.is_ended()
 
-    def log_game(self, message):
-        """Write the specified message to the game log."""
-        if self.config and not self.config.get('silent'):
-            print(message)
-
-        self.game_log_lines.append(message)
-        return
-
     def clone(self):
         """Clone this instance of SingleGame."""
-        cloned_game = SingleGame()
+        cloned_game = SingleGame(self.config)
         cloned_game.game_log_lines = list(self.game_log_lines)
         cloned_game.config = self.config
         cloned_game.bots = list(self.bots)
@@ -46,29 +33,19 @@ class SingleGame:
         cloned_game.num_turns = dict(self.num_turns)
         return cloned_game
 
-    def start(self, config, bots):
+    def start(self, bots):
         """
         Start new game.
 
-        :param config: Dictionary containing game config.
         :param bots: List of bots to run.
         """
-        self.config = config
-        self.bots = []
-
-        for bot in bots:
-            bot.setup()
-            self.bots.append(bot)
-
+        super().start(bots)
         self.game_board = board.Board()
-        self.log_game("START GAME")
-        self.current_bot_id = 0
-        self.num_turns = {'O': 0, 'X': 0}
         return
 
     def do_turn(self):
         """Process one game turn."""
-        if not self.config.get('silent'):
+        if not self.config.silent:
             self.game_board.show()
 
         current_bot = self.bots[self.current_bot_id]
@@ -79,7 +56,7 @@ class SingleGame:
 
         # Allow for a bot to return multiple moves. This is useful for running
         # the 'omnibot' in order to train or measure other bots.
-        moves = current_bot.do_turn(self.game_board)
+        moves = current_bot.do_turn(self.game_board.copy())
 
         # Update current_bot_id early, this way it will be copied to any
         # cloned games...
@@ -134,27 +111,11 @@ class SingleGame:
         self.game_board.setat(move, identity)
         self.num_turns[identity] += 1
 
-        if not self.config.get('silent'):
+        if not self.config.silent:
             self.game_board.show()
         return
 
-    def run(self, config, bots):
-        """
-        Run this game.
-
-        :param config: Dictionary of configuration details.
-        :param bots: List of bots.
-        :returns: Dictionary containing game info.
-        """
-        self.start(config, bots)
-
-        while not self.is_ended():
-            self.do_turn()
-
-        game_info = self.get_game_info()
-        return game_info
-
-    def get_game_info(self):
+    def get_result(self):
         """Get information about this game."""
         if len(self.bots) != 2:
             log_error("No bots have been set up - was this game started?")
