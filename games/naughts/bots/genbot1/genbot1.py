@@ -70,17 +70,18 @@ import os
 import random
 
 
-from games.naughts.bots.genetic_bot_base import GeneticBot
+from games.naughts.bots.bot_base import Bot
 from games.naughts.bots.genbot1 import nodes
 from lib.log import log_error
 
 
-class GENBOT1(GeneticBot):
+class GENBOT1(Bot):
     """The first genetic bot attempted."""
 
     def __init__(self, *args, **kwargs):
         """Create new GENBOT1."""
         super().__init__(*args, **kwargs)
+        self.genetic = True
         self.nodes = []
         self.output_nodes = []
         self.initial_recipe = None

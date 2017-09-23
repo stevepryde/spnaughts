@@ -10,6 +10,7 @@ import sys
 # pip install rainbow_logging_handler.
 from rainbow_logging_handler import RainbowLoggingHandler
 
+from lib.globals import set_default_log
 
 DEBUG = True
 TRACE = False
@@ -22,59 +23,6 @@ COLOURS = {'trace': 'yellow',
            'warning': 'blue',
            'error': 'magenta',
            'critical': 'red'}
-
-
-def init_default_logger(logpath, **kwargs):
-    """
-    Init default logger.
-
-    :param logpath: The base path for the log file.
-    """
-    ts = str(datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S%f'))
-    logfn = os.path.join(logpath, "logfile_" + ts + ".log")
-    init_logger(DEFAULT_LOG_NAME, logfn, **kwargs)
-    return
-
-
-def init_logger(name, logfn, console_logging=False):
-    """
-    Init logger.
-
-    :param name: The log name.
-    :param logfn: The filename for this log.
-    :param console_logging: True if the log should also log to the console.
-    """
-    # Create logger.
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)
-
-    # Create file handler which logs everything.
-    fh = logging.FileHandler(logfn)
-    fh.setLevel(logging.DEBUG)
-
-    # Create formatter and add it to the handlers.
-    formatter = logging.Formatter(fmt='%(asctime)s %(name)s:%(levelname)s :: '
-                                      '%(message)s',
-                                  datefmt='%m/%d/%Y %I:%M:%S %p')
-
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
-
-    if console_logging:
-        # Create console handler with a higher log level.
-        ch = RainbowLoggingHandler(
-            sys.stdout,
-            # Foreground colour, background colour, bold flag.
-            color_message_debug=(COLOURS['debug'], 'None', False),
-            color_message_info=(COLOURS['info'], 'None', False),
-            color_message_warning=(COLOURS['warning'], 'None', False),
-            color_message_error=(COLOURS['error'], 'None', True),
-            color_message_critical=(COLOURS['critical'], 'None', True))
-
-        ch.setLevel(logging.DEBUG)
-        ch.setFormatter(formatter)
-        logger.addHandler(ch)
-    return
 
 
 def get_lines(text):
@@ -91,68 +39,130 @@ def get_lines(text):
     return lines
 
 
-def write_log(*args, **kwargs):
-    """Alias for log_info()."""
-    log_info(*args, **kwargs)
-    return
+class LogHandler:
+    """Object that provides logging capabilities."""
 
+    def __init__(self, name):
+        """
+        Create new LogHandler object.
 
-def log_info(text, log_name=DEFAULT_LOG_NAME):
-    """Write text to the log at INFO level."""
-    logobj = logging.getLogger(log_name)
-    lines = get_lines(text)
-    for line in lines:
-        logobj.info(line)
-    return
+        :param name: Unique name for this log.
+        :param filename: The filename for the log file, including full path.
+        :param console_logging: True if the log should also write to the
+            console.
+        """
+        self.name = name
+        self.filename = None
+        self.file_logging = False
+        self.console_logging = False
 
+        # Log in memory if no console or file configured.
+        self.log_lines = []
 
-def log_error(text, log_name=DEFAULT_LOG_NAME):
-    """Write text to the log at ERROR level."""
-    logobj = logging.getLogger(log_name)
-    lines = get_lines(text)
-    for line in lines:
-        logobj.error(line)
-    return
+        # Create formatter and add it to the handlers.
+        self.formatter = logging.Formatter(
+            fmt='%(asctime)s %(levelname)s :: %(message)s',
+            datefmt='%m/%d/%Y %I:%M:%S %p')
+        return
 
+    @property
+    def is_configured(self):
+        """Return True if logging has been activated."""
+        return self.file_logging or self.console_logging
 
-def log_warning(text, log_name=DEFAULT_LOG_NAME):
-    """Write text to the log at WARNING level."""
-    logobj = logging.getLogger(log_name)
-    lines = get_lines(text)
-    for line in lines:
-        logobj.warning(line)
+    def log_to_file(self, filename):
+        """Set up file logging."""
+        self.filename = filename
+        self.file_logging = True
 
-    return
+        logger = logging.getLogger(self.name)
+        logger.setLevel(logging.DEBUG)
 
+        # Create file handler which logs everything.
+        fh = logging.FileHandler(self.filename)
+        fh.setLevel(logging.DEBUG)
 
-def log_debug(text, log_name=DEFAULT_LOG_NAME):
-    """Write text to the log at DEBUG level."""
-    logobj = logging.getLogger(log_name)
-    lines = get_lines(text)
-    for line in lines:
-        logobj.debug(line)
-    return
+        fh.setFormatter(self.formatter)
+        logger.addHandler(fh)
+        return
 
+    def log_to_console(self):
+        """Set up console logging."""
+        self.console_logging = True
+        logger = logging.getLogger(self.name)
+        logger.setLevel(logging.DEBUG)
 
-def log_trace(text, log_name=DEFAULT_LOG_NAME):
-    """
-    Write text to the log at TRACE level.
+        # Create console handler with a higher log level.
+        ch = RainbowLoggingHandler(
+            sys.stdout,
+            # Foreground colour, background colour, bold flag.
+            color_message_debug=(COLOURS['debug'], 'None', False),
+            color_message_info=(COLOURS['info'], 'None', False),
+            color_message_warning=(COLOURS['warning'], 'None', False),
+            color_message_error=(COLOURS['error'], 'None', True),
+            color_message_critical=(COLOURS['critical'], 'None', True))
 
-    Trace is the same as debug but is only output when TRACE is True.
-    See the constant at the top of this module.
-    """
-    if TRACE:
-        logobj = logging.getLogger(log_name)
+        ch.setLevel(logging.DEBUG)
+        ch.setFormatter(self.formatter)
+        logger.addHandler(ch)
+        return
+
+    def set_as_default(self):
+        """Set this as the default logger."""
+        set_default_log(self)
+        return
+
+    def get_log_obj(self):
+        """Get the logger object."""
+        if self.is_configured:
+            return logging.getLogger(self.name)
+        return None
+
+    def log_it(self, text, loglevel):
+        """Write the text to the log at the specified log level."""
+        logobj = self.get_log_obj()
+
         lines = get_lines(text)
-        for line in lines:
-            logobj.debug(line)
-    return
+        if logobj:
+            for line in lines:
+                func = getattr(logobj, loglevel)
+                func(line)
+        else:
+            for line in lines:
+                self.log_lines.append("{}: {}".format(loglevel, line))
+        return
 
+    def trace(self, text):
+        """
+        Write text to the log at TRACE level.
 
-def log_critical(text, log_name=DEFAULT_LOG_NAME):
-    """Write text to the log at CRITICAL level."""
-    logobj = logging.getLogger(log_name)
-    lines = get_lines(text)
-    for line in lines:
-        logobj.critical(line)
-    return
+        TRACE is the same as debug but is only output when TRACE is True.
+        """
+        if TRACE:
+            self.log_it(text, 'debug')
+        return
+
+    def debug(self, text):
+        """Write text to the log at DEBUG level."""
+        self.log_it(text, 'debug')
+        return
+
+    def info(self, text):
+        """Write text to the log at INFO level."""
+        self.log_it(text, 'info')
+        return
+
+    def warning(self, text):
+        """Write text to the log at WARNING level."""
+        self.log_it(text, 'warning')
+        return
+
+    def error(self, text):
+        """Write text to the log at ERROR level."""
+        self.log_it(text, 'error')
+        return
+
+    def critical(self, text):
+        """Write text to the log at CRITICAL level."""
+        self.log_it(text, 'critical')
+        return

@@ -1,123 +1,35 @@
 """Game Runner for the genetic algorithm."""
 
 
-import datetime
 import multiprocessing
-import os
 import random
 
 
 from lib.batch import Batch
-from lib.log import log_critical, log_error, log_info
 from lib.runners.gamerunnerbase import GameRunnerBase
+from lib.runners.genetic.batchworker import BatchWorker
 
 MAX_SCORE = 7.0
-
-
-class BatchWorker(multiprocessing.Process):
-    """Worker class for a single 'thread'."""
-
-    def __init__(self, batch_queue, score_threshold):
-        """
-        Create new BatchWorker object.
-
-        :param batch_queue: collections.deque() object containing batches to
-            run.
-        :param score_threshold: Maximum score to beat.
-        """
-        super().__init__()
-
-        self.batch_queue = batch_queue
-        self.manager = multiprocessing.Manager()
-        self.scores = self.manager.dict()
-        self.score_threshold = score_threshold
-        return
-
-    def run(self):
-        """Run batches until the queue is empty."""
-        try:
-            while True:
-                batch = self.batch_queue.get()
-
-                # The game runner signals the end of the queue by enqueuing
-                # 'None'.
-                if batch is None:
-                    break
-
-                info = batch.batch_info
-                sample = info['sample']
-                gen = info['generation']
-                log_path = info['log_path']
-                bot_index = info['index']
-
-                batch_scores = batch.run_batch()
-                if batch_scores is not None:
-                    self.scores[sample] = batch_scores
-
-                if batch.config.log_games:
-                    # Write batch log to a file.
-                    gen_path = os.path.join(log_path, "Gen{}".format(gen))
-                    sample_log_path = os.path.join(gen_path,
-                                                   "sample_{}_batch_log.log".
-                                                   format(sample))
-
-                    try:
-                        os.makedirs(gen_path, exist_ok=True)
-                        batch.write_to_file(sample_log_path)
-                    except OSError as e:
-                        log_error("Error creating batch log path '{}': {}".
-                                  format(gen_path, str(e)))
-
-                win = ""
-                score = batch_scores[bot_index]
-                if score > self.score_threshold:
-                    win = "*"
-
-                print("Completed batch for sample {:5d} :: score = {:.3f} {}".
-                      format(sample, score, win))
-
-                self.batch_queue.task_done()
-        except KeyboardInterrupt:
-            log_info("Cancelled")
-        return
 
 
 class GeneticRunner(GameRunnerBase):
     """Genetic Runner. This is the main genetic algorithm."""
 
-    def __init__(self, config):
+    def __init__(self):
         """Create new GeneticRunner."""
-        super().__init__(config)
+        super().__init__()
         self.bots = []
         self.genetic_bot_index = 0
         self.standard_mutations = 0
         self.genetic_index = 0
         self.genetic_name = None
-        self.game_log_path = None
         self.genetic_pool = []
 
         self.num_threads = multiprocessing.cpu_count() - 2
         if self.num_threads < 1:
             self.num_threads = 1
 
-        log_info("Using {} threads...".format(self.num_threads))
-        self.run_log_file = None
-        return
-
-    def log_genetic(self, message):
-        """Write the specified message to the genetic runner log."""
-        print(message)
-        return
-
-    def log_run(self, message):
-        """Write the specified run to the genetic runner log file."""
-        if self.run_log_file:
-            try:
-                with open(self.run_log_file, 'at') as logfile:
-                    logfile.write("{}\n".format(message))
-            except IOError as e:
-                log_critical("Error writing to run log file '{}': {}".
-                             format(self.run_log_file, str(e)))
+        self.log.info("Using {} threads...".format(self.num_threads))
         return
 
     def setup(self):
@@ -131,36 +43,13 @@ class GeneticRunner(GameRunnerBase):
             self.genetic_index = 1
         elif self.bots[1].genetic:
             # Both bots are genetic - this is not allowed.
-            log_critical("GENETICRUNNER: Both bots are genetic. Only first "
-                         "bot will use the genetic algorithm")
+            self.log.critical("GENETICRUNNER: Both bots are genetic. "
+                              "Only first bot will use the genetic algorithm")
             self.genetic_index = 0
 
         # Store the name of the genetic bot.
         # This is used to generate new ones.
         self.genetic_name = self.bots[self.genetic_index].name
-
-        # Set up logging.
-        ts = str(datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S%f'))
-        self.game_log_path = os.path.join(self.config.log_base_dir,
-                                          "genetic_{}_{}_{}".
-                                          format(self.bots[0].name,
-                                                 self.bots[1].name,
-                                                 ts))
-
-        if os.path.exists(self.game_log_path):
-            log_critical("Path '{}' already exists!".format(
-                self.game_log_path))
-            return
-
-        try:
-            os.mkdir(self.game_log_path)
-        except IOError as e:
-            log_critical("Error creating log directory '{}': {}".
-                         format(self.game_log_path, str(e)))
-            return
-
-        self.run_log_file = os.path.join(self.game_log_path,
-                                         "genetic_run_log.log")
         return
 
     def generate_samples(self, input_samples, generation):
@@ -183,8 +72,8 @@ class GeneticRunner(GameRunnerBase):
                 bot_obj = self.bot_manager.create_bot(self.genetic_name)
 
                 if not bot_obj:
-                    log_critical("Error instantiating bot '{}'".
-                                 format(self.genetic_name))
+                    self.log.critical("Error instantiating bot '{}'".
+                                      format(self.genetic_name))
                     return
 
                 # Name it using the generation and sample number.
@@ -236,8 +125,8 @@ class GeneticRunner(GameRunnerBase):
                 bot_obj = self.bot_manager.create_bot(self.genetic_name)
 
                 if not bot_obj:
-                    log_critical("Error instantiating bot '{}'".
-                                 format(bot_obj.genetic_name))
+                    self.log.critical("Error instantiating bot '{}'".
+                                      format(bot_obj.genetic_name))
                     return
 
                 # Name it using the generation and sample number.
@@ -274,21 +163,21 @@ class GeneticRunner(GameRunnerBase):
         self.setup()
 
         if not self.bots[self.genetic_index].genetic:
-            log_critical("GENETICRUNNER: Neither bot is a genetic bot!")
+            self.log.critical("GENETICRUNNER: Neither bot is a genetic bot!")
             return
 
         selected_samples = []
         score_threshold = -999  # This will be reset after first round.
 
         for gen in range(self.config.num_generations):
-            self.log_genetic("--------------------------")
-            self.log_genetic("Generation '{}':".format(str(gen)))
+            self.log.info("--------------------------")
+            self.log.info("Generation '{}':".format(str(gen)))
 
             # Set up the genetic bot pool.
             self.generate_samples(selected_samples, gen)
 
-            self.log_genetic("Standard Mutations: '{}'".
-                             format(self.standard_mutations))
+            self.log.info("Standard Mutations: '{}'".
+                          format(self.standard_mutations))
 
             # Set up the batch queue and worker threads.
             batch_queue = multiprocessing.JoinableQueue()
@@ -306,11 +195,11 @@ class GeneticRunner(GameRunnerBase):
                     else:
                         bot_list.append(self.bots[index])
 
-                batch = Batch(self.config, bot_list)
+                batch = Batch(parent_context=self, bots=bot_list)
                 batch.label = "Gen {} - Sample {}".format(gen, s)
                 batch.batch_info = {'generation': gen,
                                     'sample': s,
-                                    'log_path': self.game_log_path,
+                                    'log_path': self.path,
                                     'index': self.genetic_index}
                 batch_queue.put(batch)
 
@@ -359,10 +248,10 @@ class GeneticRunner(GameRunnerBase):
                 selected_recipes.append("[{:.3f}]: '{}'".
                                         format(score, sample.recipe))
 
-            self.log_genetic("Generation {} highest scores: [{}]".
-                             format(gen, ', '.join(selected_scores)))
+            self.log.info("Generation {} highest scores: [{}]".
+                          format(gen, ', '.join(selected_scores)))
 
             # Also log recipes of winning bots:
-            self.log_run("Generation '{}': Winning bot recipes:\n{}".
-                         format(gen, "\n".join(selected_recipes)))
+            self.log.info("Generation '{}': Winning bot recipes:\n{}".
+                          format(gen, "\n".join(selected_recipes)))
         return

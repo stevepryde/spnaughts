@@ -5,17 +5,17 @@ import os
 import random
 
 
-from games.naughts.bots.genetic_bot_base import GeneticBot
+from games.naughts.bots.bot_base import Bot
 from games.naughts.bots.genbot2 import nodes
-from lib.log import log_error
 
 
-class GENBOT2(GeneticBot):
+class GENBOT2(Bot):
     """Genbot2 - all moves are determined by the brain algorithm."""
 
     def __init__(self, *args, **kwargs):
         """Create new GENBOT2."""
         super().__init__(*args, **kwargs)
+        self.genetic = True
         self.nodes = []
         self.output_nodes = []
         self.initial_recipe = None
@@ -41,7 +41,7 @@ class GENBOT2(GeneticBot):
                     if parts[0] == 'recipefile':
                         recipefn = parts[1]
                         if not os.path.exists(recipefn):
-                            log_error(
+                            self.log.error(
                                 "Recipe file '{}' not found".format(recipefn))
                         else:
                             try:
@@ -55,9 +55,9 @@ class GENBOT2(GeneticBot):
                                 self.log_debug("Loaded recipe from file '{}'".
                                                format(recipefn))
                             except OSError as e:
-                                log_error("Error reading recipe from file "
-                                          "'{}': {}".
-                                          format(recipefn, str(e)))
+                                self.log.error("Error reading recipe from file "
+                                               "'{}': {}".
+                                               format(recipefn, str(e)))
                                 return
 
         if self.initial_recipe:
@@ -68,7 +68,7 @@ class GENBOT2(GeneticBot):
 
     def create_brain(self):
         """Create the brain for this bot."""
-        self.log_trace('Creating brain')
+        self.log.trace('Creating brain')
 
         self.nodes = []
         self.output_nodes = []
@@ -226,7 +226,7 @@ class GENBOT2(GeneticBot):
         moves = self.get_possible_moves(current_board)
 
         # ENGAGE BRAIN
-        self.log_trace('Engaging brain')
+        self.log.trace('Engaging brain')
 
         # Populate input nodes with the current board state.
         i = 0
@@ -258,19 +258,19 @@ class GENBOT2(GeneticBot):
 
             i += 1
 
-        self.log_trace('Input nodes are populated')
+        self.log.trace('Input nodes are populated')
 
         # Now process the brain.
         for index in range(i, len(self.nodes)):
             self.nodes[index].update()
 
-        self.log_trace('Brain has been processed')
+        self.log.trace('Brain has been processed')
 
         # And finally process the output nodes.
         for node in self.output_nodes:
             node.update()
 
-        self.log_trace('Output nodes have been processed')
+        self.log.trace('Output nodes have been processed')
 
         # Now sort moves according to the value of the output nodes.
         dsort = {}

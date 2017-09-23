@@ -1,32 +1,21 @@
 """Base generic game object."""
 
 
-from lib.log import log_info
+from lib.gamecontext import GameContext
+from lib.globals import get_config, log_info
 
 
-class GameBase:
+class GameBase(GameContext):
     """Base object for a game."""
 
     identities = ('1', '2')
 
-    def __init__(self, config):
+    def __init__(self, parent_context):
         """Create a new GameBase object."""
-        self.config = config
+        super().__init__(parent_context)
         self.bots = []
-        self.game_log_lines = []
         self.num_turns = {}
-        return
-
-    def get_game_log(self):
-        """Return the full game log."""
-        return "\n".join(self.game_log_lines)
-
-    def log_game(self, message):
-        """Write the specified message to the game log."""
-        if not self.config.silent:
-            log_info(message)
-
-        self.game_log_lines.append(message)
+        self.current_bot_id = 0
         return
 
     def is_ended(self):
@@ -40,7 +29,7 @@ class GameBase:
         for bot in self.bots:
             bot.setup()
 
-        self.log_game("START GAME")
+        self.log.info("START GAME")
         self.current_bot_id = 0
         self.num_turns = {}
         for identity in self.identities:

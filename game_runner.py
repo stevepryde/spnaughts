@@ -1,31 +1,34 @@
 #!/usr/bin/env python
 """Simple naughts and crosses game for developing AI bots."""
 
+import os
 import random
 
-from lib.log import log_info, log_trace
 from lib.gameconfig import GameConfig, quit_game
+from lib.globals import set_global_config
 from lib.runners import singlerunner, batchrunner, geneticrunner
 
 
 if __name__ == '__main__':
-    config = GameConfig()
-    log_trace("Started")
+    base_dir = os.path.abspath(os.path.dirname(__file__))
+    config = GameConfig(base_path=base_dir)
+    set_global_config(config)
+    print("Started")
 
     try:
         runner = None
         if config.genetic_mode:
-            log_info("Using GENETIC game runner")
-            runner = geneticrunner.GeneticRunner(config)
+            print("Using GENETIC game runner")
+            runner = geneticrunner.GeneticRunner()
         elif config.batch_mode:
-            log_info("Using BATCH game runner")
-            runner = batchrunner.BatchRunner(config)
+            print("Using BATCH game runner")
+            runner = batchrunner.BatchRunner()
         else:
-            log_info("Using SINGLE game runner")
-            runner = singlerunner.SingleRunner(config)
+            print("Using SINGLE game runner")
+            runner = singlerunner.SingleRunner()
 
         runner.run()
-        log_trace("Completed")
+        print("Completed")
 
     except KeyboardInterrupt:
         quit_game("Cancelled...")
