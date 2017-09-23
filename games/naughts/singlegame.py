@@ -1,7 +1,6 @@
 """Module for running a single game of naughts and crosses."""
 
 
-from lib.log import log_error
 from lib.gamebase import GameBase
 from games.naughts import board
 
@@ -11,9 +10,9 @@ class SingleGame(GameBase):
 
     identities = ('X', 'O')
 
-    def __init__(self, config):
+    def __init__(self, parent_context):
         """Create a new SingleGame object."""
-        super().__init__(config)
+        super().__init__(parent_context)
         self.game_board = None
         self.current_bot_id = 0
         return
@@ -24,9 +23,7 @@ class SingleGame(GameBase):
 
     def clone(self):
         """Clone this instance of SingleGame."""
-        cloned_game = SingleGame(self.config)
-        cloned_game.game_log_lines = list(self.game_log_lines)
-        cloned_game.config = self.config
+        cloned_game = SingleGame(self.parent_context)
         cloned_game.bots = list(self.bots)
         cloned_game.game_board = self.game_board.copy()
         cloned_game.current_bot_id = self.current_bot_id
@@ -52,7 +49,7 @@ class SingleGame(GameBase):
         name = current_bot.name
         identity = current_bot.identity
 
-        self.log_game("What is your move, '{}'?".format(name))
+        self.log.info("What is your move, '{}'?".format(name))
 
         # Allow for a bot to return multiple moves. This is useful for running
         # the 'omnibot' in order to train or measure other bots.
@@ -95,17 +92,17 @@ class SingleGame(GameBase):
         :param name: The name of the bot.
         :param identity: The player identity ('X' or 'O')
         """
-        self.log_game("'{}' chose move ({})".format(name, move))
-        self.log_game("")
+        self.log.info("'{}' chose move ({})".format(name, move))
+        self.log.info("")
 
         if move < 0 or move > 8:
-            log_error("Bot '{}' performed a move out of range ({})".
-                      format(name, move))
+            self.log.error("Bot '{}' performed a move out of range ({})".
+                           format(name, move))
             return
 
         if self.game_board.getat(move) != ' ':
-            log_error("Bot '{}' performed an illegal move ({})".
-                      format(name, move))
+            self.log.error("Bot '{}' performed an illegal move ({})".
+                           format(name, move))
             return
 
         self.game_board.setat(move, identity)
@@ -118,14 +115,14 @@ class SingleGame(GameBase):
     def get_result(self):
         """Get information about this game."""
         if len(self.bots) != 2:
-            log_error("No bots have been set up - was this game started?")
+            self.log.error("No bots have been set up - was this game started?")
             return
 
         result = self.game_board.get_game_state()
 
         if result == 0:
-            log_error("Game ended with invalid state of 0 - was this game "
-                      "finished?")
+            self.log.error("Game ended with invalid state of 0 - was this "
+                           "game finished?")
             return
 
         score_X = self.calculate_score(self.num_turns['X'], result == 1,
@@ -134,22 +131,22 @@ class SingleGame(GameBase):
                                        result == 3)
 
         if result == 1:  # X wins
-            self.log_game("Bot '{}' wins".format(self.bots[0].name))
+            self.log.info("Bot '{}' wins".format(self.bots[0].name))
             self.bots[0].process_result('WIN', score_X)
             self.bots[1].process_result('LOSS', score_O)
         elif result == 2:  # O wins
-            self.log_game("Bot '{}' wins".format(self.bots[1].name))
+            self.log.info("Bot '{}' wins".format(self.bots[1].name))
             self.bots[0].process_result('LOSS', score_X)
             self.bots[1].process_result('WIN', score_O)
         elif result == 3:  # Tie
-            self.log_game("It's a TIE")
+            self.log.info("It's a TIE")
             self.bots[0].process_result('TIE', score_X)
             self.bots[1].process_result('TIE', score_O)
         else:
-            log_error("Game ended with invalid state ({})".format(result))
+            self.log.error("Game ended with invalid state ({})".format(result))
             return
 
-        self.log_game("Scores: '{}':{:.2f} , '{}':{:.2f}".
+        self.log.info("Scores: '{}':{:.2f} , '{}':{:.2f}".
                       format(self.bots[0].name, score_X,
                              self.bots[1].name, score_O))
 

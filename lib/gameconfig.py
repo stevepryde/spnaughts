@@ -7,7 +7,7 @@ import sys
 import traceback
 
 
-from lib.log import init_default_logger, log_critical, log_debug
+from lib.globals import log_critical
 from lib.support.topbots import TopBots
 
 
@@ -19,7 +19,7 @@ SUPPORTED_GAMES = ['naughts']
 
 def quit_game(message='Exiting...'):
     """Quit the game, displaying a message."""
-    log_debug(message)
+    print(message)
     sys.exit(1)
 
 
@@ -52,8 +52,9 @@ def check_int0plus(value):
 class GameConfig:
     """Game config object."""
 
-    def __init__(self):
+    def __init__(self, base_path):
         """Create a new GameConfig object."""
+        self.base_path = base_path
         self.game = None
         self.silent = False
         self.console_logging = True
@@ -84,9 +85,11 @@ class GameConfig:
         parser.add_argument('--game', type=str, metavar="GAME",
                             choices=SUPPORTED_GAMES, required=True,
                             help='The game to run')
-        parser.add_argument('--batch', type=check_int0plus,
+        parser.add_argument('--batch', type=check_int0plus, default=0,
                             help='Batch mode. Specify the number of games to '
                             'run')
+        parser.add_argument('--magic', action="store_true",
+                            help="Use 'magic' batch type (omnibot only!)")
         parser.add_argument('--stoponloss',
                             help='Stop if the specified player loses')
         parser.add_argument('--genetic', type=check_int1plus,
@@ -123,7 +126,7 @@ class GameConfig:
                             'top']
 
         args_dict = vars(args)
-        if args.batch is None:
+        if args.batch:
             for req in requires_batch:
                 if req in args_dict and args_dict[req]:
                     parser.error("Option --{} requires --batch".format(req))
@@ -149,10 +152,14 @@ class GameConfig:
         self.bot1 = args.bot1
         self.bot2 = args.bot2
 
-        if args.batch >= 0:
+        if args.magic or args.batch > 0:
+            if args.magic:
+                self.batch_size = 0
+            else:
+                self.batch_size = int(args.batch)
+
             self.batch_mode = True
             self.silent = True
-            self.batch_size = int(args.batch)
 
             if args.genetic:
                 self.genetic_mode = True
@@ -171,26 +178,21 @@ class GameConfig:
 
     def init_logging(self):
         """Set up logging functionality."""
-        # Set up logging.
-        self.log_base_dir = os.path.join(LOG_BASE_PATH, 'games', self.game)
+        self.log_base_dir = os.path.join(self.base_path, LOG_BASE_PATH,
+                                         'games', self.game)
 
         try:
             os.makedirs(self.log_base_dir, exist_ok=True)
         except IOError as e:
-            log_critical("Error creating game log dir '{}': {}".
-                         format(self.log_base_dir, str(e)))
-            quit_game("Failed to create log dir")
+            quit_game("Error creating game log dir '{}': {}".
+                      format(self.log_base_dir, str(e)))
 
-        self.data_path = DATA_BASE_PATH
+        self.data_path = os.path.join(self.base_path, DATA_BASE_PATH)
         try:
             os.makedirs(self.data_path, exist_ok=True)
         except IOError as e:
-            log_critical("Error creating data dir '{}': {}".
-                         format(self.data_path, str(e)))
-            quit_game("Failed to create data dir")
-
-        init_default_logger(LOG_BASE_PATH,
-                            console_logging=self.console_logging)
+            quit_game("Error creating data dir '{}': {}".
+                      format(self.data_path, str(e)))
         return
 
     def get_game_class(self):
@@ -207,7 +209,7 @@ class GameConfig:
         class_ = getattr(module, 'SingleGame')
         return class_
 
-    def get_game_obj(self):
+    def get_game_obj(self, parent_context):
         """Get a new instance of the SingleGame object for the game type."""
         class_ = self.get_game_class()
-        return class_(config=self)
+        return class_(parent_context)

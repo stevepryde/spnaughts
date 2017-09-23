@@ -3,3 +3,4 @@ logs
 .directory
 custom
 /.vscode/
+.mypy_cache/

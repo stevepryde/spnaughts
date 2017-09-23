@@ -9,16 +9,22 @@ subject to compare against genbot1.
 import random
 
 
-from games.naughts.bots.genetic_bot_base import GeneticBot
+from games.naughts.bots.bot_base import Bot
 
 
-class GENBOTCONTROL(GeneticBot):
+class GENBOTCONTROL(Bot):
     """
     Control bot for genbot1.
 
     If genbot1 does no better than this bot, then it is no better than random
     chance.
     """
+
+    def __init__(self, *args, **kwargs):
+        """Create new GENBOTCONTROL."""
+        super().__init__(*args, **kwargs)
+        self.genetic = True
+        return
 
     def get_recipe(self):
         """Stub for getting a recipe. This bot doesn't actually use recipes."""

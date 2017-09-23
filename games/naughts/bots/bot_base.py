@@ -9,7 +9,6 @@ Bots can optionally implement setup() and process_result().
 import os
 
 from lib.gameplayer import GamePlayer
-from lib.log import log_debug, log_trace
 
 
 class Bot(GamePlayer):
@@ -25,11 +24,6 @@ class Bot(GamePlayer):
         if self.identity == 'X':
             return 'O'
         return 'X'
-
-    @property
-    def recipe(self):
-        """Get the recipe for this bot."""
-        return None
 
     def clear_score(self):
         """Set the score to None."""
