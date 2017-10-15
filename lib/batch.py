@@ -7,6 +7,10 @@ import random
 
 from lib.gamecontext import GameContext
 
+P1_WINS = 1
+P2_WINS = 2
+DRAW = 3
+
 
 class Batch(GameContext):
     """A Batch will run a batch of single games."""
@@ -23,9 +27,9 @@ class Batch(GameContext):
         self.bots = bots
 
         self.label = ""
-        self.batch_info = {}
+        self.batch_info = {}  # Used by genetic.batchworker.
 
-        self.overall_results = {1: 0, 2: 0, 3: 0}
+        self.overall_results = {P1_WINS: 0, P2_WINS: 0, DRAW: 0}
         self.num_games_played = 0
         self.total_score = {}
         return
@@ -51,7 +55,7 @@ class Batch(GameContext):
             self.bots[index].identity = identity
             self.total_score[identity] = 0
 
-        self.overall_results = {1: 0, 2: 0, 3: 0}
+        self.overall_results = {P1_WINS: 0, P2_WINS: 0, DRAW: 0}
         self.num_games_played = 0
 
         random.seed(1)
@@ -69,14 +73,14 @@ class Batch(GameContext):
 
         bot_name = ''
         identity_loss = ''
-        if result == 3:
+        if result == DRAW:
             self.log.info("Game {}: TIE".format(game_num))
         else:
-            if result == 1:
+            if result == P1_WINS:
                 identity_loss = identities[1]
                 bot_name = self.bots[0].name
-            elif result == 2:
-                identity_loss = identities[1]
+            elif result == P2_WINS:
+                identity_loss = identities[0]
                 bot_name = self.bots[1].name
             else:
                 self.log.error("Invalid result received: '{}'".format(result))
@@ -108,10 +112,10 @@ class Batch(GameContext):
         self.log.info("Games Played: {}".format(self.num_games_played))
         self.log.info("")
         self.log.info("'{}' WINS: {}".format(self.bots[0].name,
-                                             self.overall_results[1]))
+                                             self.overall_results[P1_WINS]))
         self.log.info("'{}' WINS: {}".format(self.bots[1].name,
-                                             self.overall_results[2]))
-        self.log.info("DRAW/TIE: {}".format(self.overall_results[3]))
+                                             self.overall_results[P2_WINS]))
+        self.log.info("DRAW/TIE: {}".format(self.overall_results[DRAW]))
         self.log.info("")
 
         # Get average scores.

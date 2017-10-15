@@ -2,7 +2,6 @@
 
 
 from lib.gamecontext import GameContext
-from lib.globals import get_config, log_info
 
 
 class GameBase(GameContext):

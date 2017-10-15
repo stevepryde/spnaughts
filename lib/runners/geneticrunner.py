@@ -18,6 +18,7 @@ class GeneticRunner(GameRunnerBase):
     def __init__(self):
         """Create new GeneticRunner."""
         super().__init__()
+        self.enable_console_logging()
         self.bots = []
         self.genetic_bot_index = 0
         self.standard_mutations = 0
@@ -51,112 +52,6 @@ class GeneticRunner(GameRunnerBase):
         # This is used to generate new ones.
         self.genetic_name = self.bots[self.genetic_index].name
         return
-
-    def generate_samples(self, input_samples, generation):
-        """Generate the required number of genetic samples.
-
-        :param input_samples: List of input samples.
-        :param generation: The generation number.
-        """
-        self.genetic_pool = []
-
-        if not input_samples:
-            # Start from scratch, just create random bots.
-            # NOTE: The original bot is discarded (for convenience).
-
-            # NOTE: if --top is specified, create bots from the top recipes.
-            top_index = 0
-            botname = self.bots[self.genetic_index].name
-            top_recipes = self.config.top_bots.get_top_recipe_list(botname)
-            for s in range(1, self.config.num_samples + 1):
-                bot_obj = self.bot_manager.create_bot(self.genetic_name)
-
-                if not bot_obj:
-                    self.log.critical("Error instantiating bot '{}'".
-                                      format(self.genetic_name))
-                    return
-
-                # Name it using the generation and sample number.
-                # This is generation 0.
-                bot_obj.name = "{}-{}-{}".format(self.genetic_name,
-                                                 generation, s)
-
-                if self.config.use_top_bots and top_recipes:
-                    if top_index >= len(top_recipes):
-                        # Out of range: Just repeat the first one.
-                        bot_obj.create_from_recipe(top_recipes[0])
-                    else:
-                        bot_obj.create_from_recipe(top_recipes[top_index])
-                        top_index += 1
-                else:
-                    bot_obj.create()
-                self.genetic_pool.append(bot_obj)
-            return
-
-        # Input samples given. Generate new ones.
-        self.genetic_pool.extend(input_samples)
-
-        for sample in input_samples:
-            sample_recipe = sample.recipe
-
-            # Experimental:
-            # If the sample had fewer mutations than the current standard,
-            # lower the standard number, and vice versa.
-            sample_mutations = sample.get_metadata('mutations')
-            if sample_mutations is None:
-                sample_mutations = self.standard_mutations
-
-            self.standard_mutations += \
-                int((sample_mutations - self.standard_mutations) * 0.3)
-
-            if self.standard_mutations < 1:
-                self.standard_mutations = 1
-
-            mutation_range = self.standard_mutations * 2.0
-            min_mutations = self.standard_mutations - int(mutation_range / 2.0)
-
-            if min_mutations < 1:
-                min_mutations = 1
-
-            if mutation_range < 2:
-                mutation_range = 2
-
-            for s in range(1, self.config.num_samples):
-                bot_obj = self.bot_manager.create_bot(self.genetic_name)
-
-                if not bot_obj:
-                    self.log.critical("Error instantiating bot '{}'".
-                                      format(bot_obj.genetic_name))
-                    return
-
-                # Name it using the generation and sample number.
-                bot_obj.name = "{}-{}-{}".format(self.genetic_name,
-                                                 generation, s)
-
-                # Mutate the recipe.
-                num_mutations = random.randint(min_mutations,
-                                               min_mutations + mutation_range)
-
-                mutated_recipe = sample_recipe
-                mutated_recipe = bot_obj.mutate_recipe(mutated_recipe,
-                                                       num_mutations)
-
-                bot_obj.create_from_recipe(mutated_recipe)
-                bot_obj.set_metadata('mutations', num_mutations)
-                self.genetic_pool.append(bot_obj)
-        return
-
-    def select_samples(self, sorted_pool):
-        """Select samples from the given pool."""
-        # TODO: allow custom selector, to test various selection criteria.
-
-        keep = int(self.config.keep_samples)
-        if keep > len(sorted_pool):
-            keep = len(sorted_pool)
-
-        # Get samples.
-        # For now, just get the top n scoring samples.
-        return sorted_pool[:keep]
 
     def run(self):
         """Run the games."""
@@ -199,7 +94,6 @@ class GeneticRunner(GameRunnerBase):
                 batch.label = "Gen {} - Sample {}".format(gen, s)
                 batch.batch_info = {'generation': gen,
                                     'sample': s,
-                                    'log_path': self.path,
                                     'index': self.genetic_index}
                 batch_queue.put(batch)
 
@@ -252,6 +146,120 @@ class GeneticRunner(GameRunnerBase):
                           format(gen, ', '.join(selected_scores)))
 
             # Also log recipes of winning bots:
-            self.log.info("Generation '{}': Winning bot recipes:\n{}".
-                          format(gen, "\n".join(selected_recipes)))
+            self.log.debug("Generation '{}': Winning bot recipes:\n{}".
+                           format(gen, "\n".join(selected_recipes)))
         return
+
+    def generate_samples(self, input_samples, generation):
+        """Generate the required number of genetic samples.
+
+        This takes some input samples and uses them to generate a range of
+        mutated samples based on these originals. If no originals are provided,
+        this will create random samples from scratch.
+
+        :param input_samples: List of input samples.
+        :param generation: The generation number.
+        """
+        if not input_samples:
+            return self.generate_original_samples(generation)
+
+        # Add the samples first. This allows the original samples to compete
+        # with the offspring, and guards against the scenario where all
+        # offspring are less-advantaged.
+        self.genetic_pool = list(input_samples)
+
+        for sample in input_samples:
+            sample_recipe = sample.recipe
+
+            # Experimental:
+            # If the sample had fewer mutations than the current standard,
+            # lower the standard number, and vice versa.
+            sample_mutations = sample.get_metadata('mutations')
+            if sample_mutations is None:
+                sample_mutations = self.standard_mutations
+
+            self.standard_mutations += \
+                int((sample_mutations - self.standard_mutations) * 0.3)
+
+            if self.standard_mutations < 1:
+                self.standard_mutations = 1
+
+            mutation_range = self.standard_mutations * 2.0
+            min_mutations = self.standard_mutations - int(mutation_range / 2.0)
+
+            if min_mutations < 1:
+                min_mutations = 1
+
+            if mutation_range < 2:
+                mutation_range = 2
+
+            for s in range(1, self.config.num_samples):
+                bot_obj = self.bot_manager.create_bot(self.genetic_name)
+
+                if not bot_obj:
+                    self.log.critical("Error instantiating bot '{}'".
+                                      format(bot_obj.genetic_name))
+                    return
+
+                # Name it using the generation and sample number.
+                bot_obj.name = "{}-{}-{}".format(self.genetic_name,
+                                                 generation, s)
+
+                # Mutate the recipe.
+                num_mutations = random.randint(min_mutations,
+                                               min_mutations + mutation_range)
+
+                mutated_recipe = sample_recipe
+                mutated_recipe = bot_obj.mutate_recipe(mutated_recipe,
+                                                       num_mutations)
+
+                bot_obj.create_from_recipe(mutated_recipe)
+                bot_obj.set_metadata('mutations', num_mutations)
+                self.genetic_pool.append(bot_obj)
+        return
+
+    def generate_original_samples(self, generation):
+        """Generate samples from scratch."""
+        # Start from scratch, just create random bots.
+        self.genetic_pool = []
+
+        # NOTE: if --top is specified, create bots from the top recipes.
+        top_index = 0
+        botname = self.bots[self.genetic_index].name
+        top_recipes = self.config.top_bots.get_top_recipe_list(botname)
+        for s in range(1, self.config.num_samples + 1):
+            bot_obj = self.bot_manager.create_bot(self.genetic_name)
+
+            if not bot_obj:
+                self.log.critical("Error instantiating bot '{}'".
+                                  format(self.genetic_name))
+                return
+
+            # Name it using the generation and sample number.
+            # This is generation 0.
+            bot_obj.name = "{}-{}-{}".format(self.genetic_name,
+                                             generation, s)
+
+            if self.config.use_top_bots and top_recipes:
+                if top_index >= len(top_recipes):
+                    # Out of range: Just repeat the first one.
+                    bot_obj.create_from_recipe(top_recipes[0])
+                else:
+                    bot_obj.create_from_recipe(top_recipes[top_index])
+                    top_index += 1
+            else:
+                bot_obj.create()
+            self.genetic_pool.append(bot_obj)
+        return
+
+    def select_samples(self, sorted_pool):
+        """Select samples from the given pool."""
+        # TODO: allow custom selector, to test various selection criteria.
+
+        keep = int(self.config.keep_samples)
+        if keep > len(sorted_pool):
+            keep = len(sorted_pool)
+
+        # Get samples.
+        # For now, just get the top n scoring samples.
+        return sorted_pool[:keep]

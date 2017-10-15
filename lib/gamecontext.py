@@ -2,7 +2,6 @@
 
 
 import contextlib
-import os
 import re
 
 from lib.globals import get_config, log_error

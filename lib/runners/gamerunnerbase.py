@@ -15,8 +15,6 @@ class GameRunnerBase(GameContext):
         prefix = "{}_{}_{}_".format(classname, config.bot1, config.bot2)
         super().__init__(parent_context=None, subdir_prefix=prefix)
         self.enable_file_logging()
-        if config.console_logging:
-            self.enable_console_logging()
         self.log.set_as_default()
         self.bot_manager = BotManager(self)
         return
