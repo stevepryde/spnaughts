@@ -57,7 +57,7 @@ class GameConfig:
         self.base_path = base_path
         self.game = None
         self.silent = False
-        self.console_logging = True
+        self.console_logging = False
         self.batch_mode = False
         self.genetic_mode = False
         self.no_batch_summary = False
