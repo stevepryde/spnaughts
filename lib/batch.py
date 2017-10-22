@@ -22,8 +22,7 @@ class Batch(GameContext):
         :param config: GameConfig object.
         :param bots: List of bots to run.
         """
-        super().__init__(parent_context=parent_context, subdir_prefix='batch')
-        self.enable_file_logging()
+        super().__init__(parent_context=parent_context)
         self.bots = bots
 
         self.label = ""

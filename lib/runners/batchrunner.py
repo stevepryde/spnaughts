@@ -18,5 +18,6 @@ class BatchRunner(GameRunnerBase):
         # Set up log.
         bots = self.bot_manager.create_bots()
         batch = Batch(parent_context=self, bots=bots)
+        batch.enable_file_logging(subdir_prefix='batch')
         batch.run_batch()
         return

@@ -1,11 +1,9 @@
 """Module providing simple logging capabilities."""
 
 
-import datetime
 import logging
-import os
 import sys
-
+import uuid
 
 # pip install rainbow_logging_handler.
 from rainbow_logging_handler import RainbowLoggingHandler
@@ -42,16 +40,15 @@ def get_lines(text):
 class LogHandler:
     """Object that provides logging capabilities."""
 
-    def __init__(self, name):
+    def __init__(self):
         """
         Create new LogHandler object.
 
-        :param name: Unique name for this log.
         :param filename: The filename for the log file, including full path.
         :param console_logging: True if the log should also write to the
             console.
         """
-        self.name = name
+        self.name = str(uuid.uuid4().hex)  # Unique internal log name.
         self.filename = None
         self.file_logging = False
         self.console_logging = False

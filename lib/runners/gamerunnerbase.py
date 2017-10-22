@@ -10,11 +10,11 @@ class GameRunnerBase(GameContext):
 
     def __init__(self):
         """Create new GameRunnerBase object."""
-        config = get_config()
+        super().__init__(parent_context=None)
         classname = self.__class__.__name__.lower()
-        prefix = "{}_{}_{}_".format(classname, config.bot1, config.bot2)
-        super().__init__(parent_context=None, subdir_prefix=prefix)
-        self.enable_file_logging()
+        prefix = "{}_{}_{}_".format(classname, self.config.bot1,
+                                    self.config.bot2)
+        self.enable_file_logging(subdir_prefix=prefix)
         self.log.set_as_default()
         self.bot_manager = BotManager(self)
         return
