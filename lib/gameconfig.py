@@ -126,7 +126,7 @@ class GameConfig:
                             'top']
 
         args_dict = vars(args)
-        if args.batch:
+        if not args.batch:
             for req in requires_batch:
                 if req in args_dict and args_dict[req]:
                     parser.error("Option --{} requires --batch".format(req))
