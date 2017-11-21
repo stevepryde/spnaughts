@@ -26,18 +26,6 @@ class GENBOTCONTROL(Bot):
         self.genetic = True
         return
 
-    def get_recipe(self):
-        """Stub for getting a recipe. This bot doesn't actually use recipes."""
-        return "BLAH"
-
-    def create_from_recipe(self, recipe):
-        """Stub for creating a bot from a recipe. The recipe is ignored."""
-        return
-
-    def mutate_recipe(self, recipe, num_mutations=1):
-        """Stub for mutating a recipe. Just return the recipe."""
-        return recipe
-
     def do_turn(self, game_obj):
         """Do one turn."""
         current_board = game_obj

@@ -2,7 +2,12 @@
 Maintain list of top bots ever produced by genetic algorithm.
 """
 
+import copy
+import json
 import os
+
+
+from lib.globals import log_error, log_warning
 
 
 class TopBots:
@@ -10,80 +15,44 @@ class TopBots:
 
     def __init__(self, path):
         self.path = path
-
-        # keys = botname, values = dict of scores keyed by recipe.
-        self.topbots = {}
+        self.topbots = []
         self.num_saved = 10
         return
 
     def load(self, botname):
-        key = botname.lower()
-        fn = os.path.join(self.path, key)
+        self.topbots = []
+        fn = os.path.join(self.path, botname.lower())
 
         if (not os.path.exists(fn)):
             # No file for this bot.
-            self.topbots[key] = {}
+            log_warning("No existing file for bot '{}'".format(botname))
             return
 
         with open(fn, 'rt') as f:
-            lines = f.read().split('\n')
-
-        topdict = {}
-        for line in lines:
-            if (not line.strip()):
-                continue
-
-            parts = line.split('=', 1)
             try:
-                topdict[parts[1].strip()] = float(parts[0])
-            except TypeError:
-                pass
-
-        self.topbots[key] = topdict
+                self.topbots = json.load(f)
+            except json.JSONDecodeError:
+                log_error("Error decoding JSON for bot '{}'".format(botname))
         return
 
     def save(self, botname):
-        key = botname.lower()
-        recipes = self.topbots.get(key)
-        if (not recipes or not isinstance(recipes, dict)):
-            return
-
-        sorted_keys = sorted(recipes, key=recipes.__getitem__, reverse=True)
-
-        fn = os.path.join(self.path, key)
+        fn = os.path.join(self.path, botname.lower())
         with open(fn, 'wt') as f:
-            for dkey in sorted_keys:
-                f.write("{:.3f}={}\n".format(recipes[dkey], dkey))
-
+            json.dump(self.topbots, f)
         return
 
-    def check(self, botname, recipe, score):
+    def check(self, botname, bot):
         """
-        Check if the specified recipe should go in the top 10.
+        Check if the specified bot should go in the top 10.
         """
 
         self.load(botname)
 
-        # Easy way to do this is simply to add it to the dictionary, and then
-        # sort the dictionary again and cull to top 10.
-        key = botname.lower()
-        botdict = self.topbots.get(key)
-        if (not botdict):
-            botdict = {}
-            self.topbots[key] = botdict
+        data_copy = copy.deepcopy(bot.to_dict())
+        self.topbots.append(data_copy)
+        self.sort_and_cull()
 
-        vals = botdict.values()
-        if (vals):
-            if (score <= min(vals) and len(botdict) >= self.num_saved):
-                return False
-
-        # Add this one to the dict.
-        botdict[recipe] = score
-
-        # Now sort and cull - this may drop a random one off the end.
-        self.sort_and_cull(botname)
-
-        if (recipe in self.topbots[key]):
+        if (data_copy in self.topbots):
             # This recipe made the cut.
             # Write file out to disk.
             self.save(botname)
@@ -91,28 +60,13 @@ class TopBots:
 
         return False
 
-    def sort_and_cull(self, botname):
-        key = botname.lower()
-        botdict = self.topbots.get(key)
-        if (not botdict):
-            return
-
-        sorted_keys = sorted(botdict, key=botdict.__getitem__, reverse=True)
-
-        newdict = {}
-        for dkey in sorted_keys[:self.num_saved]:
-            newdict[dkey] = botdict[dkey]
-
-        self.topbots[key] = newdict
+    def sort_and_cull(self):
+        sorted_bots = sorted(self.topbots, key=lambda x: x.get('score'),
+                             reverse=True)
+        self.topbots = sorted_bots[:self.num_saved]
         return
 
-    def get_top_recipe_list(self, botname):
+    def get_top_bot_data(self, botname):
         self.load(botname)
-
-        key = botname.lower()
-        botdict = self.topbots.get(key)
-        if (not botdict):
-            return []
-
-        sorted_keys = sorted(botdict, key=botdict.__getitem__, reverse=True)
-        return sorted_keys
+        self.sort_and_cull()
+        return self.topbots

@@ -12,7 +12,7 @@ class SingleGame(GameBase):
 
     def __init__(self, parent_context):
         """Create a new SingleGame object."""
-        super().__init__(parent_context)
+        super().__init__(parent_context=parent_context)
         self.game_board = None
         self.current_bot_id = 0
         return
@@ -156,7 +156,7 @@ class SingleGame(GameBase):
 
     def calculate_score(self, num_turns, is_win, is_draw):
         """
-        Calculate the 'score' for this game, from the perspective of bot 1.
+        Calculate the 'score' for this game.
 
         :param num_turns: The number of turns played.
         :param is_win: True if this game is a win.

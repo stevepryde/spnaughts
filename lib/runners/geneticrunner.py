@@ -1,6 +1,7 @@
 """Game Runner for the genetic algorithm."""
 
 
+import json
 import multiprocessing
 import random
 
@@ -21,7 +22,6 @@ class GeneticRunner(GameRunnerBase):
         self.enable_console_logging()
         self.bots = []
         self.genetic_bot_index = 0
-        self.standard_mutations = 0
         self.genetic_index = 0
         self.genetic_name = None
         self.genetic_pool = []
@@ -36,7 +36,6 @@ class GeneticRunner(GameRunnerBase):
     def setup(self):
         """Set up the genetic runner."""
         self.genetic_index = 0
-        self.standard_mutations = 20
 
         # Determine which bot is genetic.
         self.bots = self.bot_manager.create_bots()
@@ -56,8 +55,9 @@ class GeneticRunner(GameRunnerBase):
     def run(self):
         """Run the games."""
         self.setup()
+        genetic_bot = self.bots[self.genetic_index]
 
-        if not self.bots[self.genetic_index].genetic:
+        if not genetic_bot.genetic:
             self.log.critical("GENETICRUNNER: Neither bot is a genetic bot!")
             return
 
@@ -70,9 +70,6 @@ class GeneticRunner(GameRunnerBase):
 
             # Set up the genetic bot pool.
             self.generate_samples(selected_samples, gen)
-
-            self.log.info("Standard Mutations: '{}'".
-                          format(self.standard_mutations))
 
             # Set up the batch queue and worker threads.
             batch_queue = multiprocessing.JoinableQueue()
@@ -111,13 +108,11 @@ class GeneticRunner(GameRunnerBase):
                 scores.update(thr.scores)
 
             # First get a dict of just the score we want.
-            bot_scores = {}
             for s, score_list in scores.items():
                 genetic_score = score_list[self.genetic_index]
 
                 # Set the score in the bot object.
                 self.genetic_pool[s].score = genetic_score
-                bot_scores[s] = genetic_score
 
             # Sort the pool based on score, in descending order.
             sorted_pool = sorted(self.genetic_pool,
@@ -130,11 +125,10 @@ class GeneticRunner(GameRunnerBase):
             selected_recipes = []
             for sample in selected_samples:
                 # Check if this is one of the top for this bot.
-                score = sample.score
                 self.config.top_bots.check(self.bots[self.genetic_index].name,
-                                           sample.recipe,
-                                           score)
+                                           sample)
 
+                score = sample.score
                 if score > score_threshold:
                     score_threshold = score
 
@@ -145,9 +139,12 @@ class GeneticRunner(GameRunnerBase):
             self.log.info("Generation {} highest scores: [{}]".
                           format(gen, ', '.join(selected_scores)))
 
-            # Also log recipes of winning bots:
-            self.log.debug("Generation '{}': Winning bot recipes:\n{}".
-                           format(gen, "\n".join(selected_recipes)))
+            # Write winning recipes to a file.
+            with self.open_unique_file(prefix="winning_recipes_GEN{:04d}".
+                                       format(gen)) as f:
+                bot_list = [x.to_dict() for x in selected_samples]
+                json.dump(bot_list, f)
+
         return
 
     def generate_samples(self, input_samples, generation):
@@ -169,30 +166,6 @@ class GeneticRunner(GameRunnerBase):
         self.genetic_pool = list(input_samples)
 
         for sample in input_samples:
-            sample_recipe = sample.recipe
-
-            # Experimental:
-            # If the sample had fewer mutations than the current standard,
-            # lower the standard number, and vice versa.
-            sample_mutations = sample.get_metadata('mutations')
-            if sample_mutations is None:
-                sample_mutations = self.standard_mutations
-
-            self.standard_mutations += \
-                int((sample_mutations - self.standard_mutations) * 0.3)
-
-            if self.standard_mutations < 1:
-                self.standard_mutations = 1
-
-            mutation_range = self.standard_mutations * 2.0
-            min_mutations = self.standard_mutations - int(mutation_range / 2.0)
-
-            if min_mutations < 1:
-                min_mutations = 1
-
-            if mutation_range < 2:
-                mutation_range = 2
-
             for s in range(1, self.config.num_samples):
                 bot_obj = self.bot_manager.create_bot(self.genetic_name)
 
@@ -205,16 +178,8 @@ class GeneticRunner(GameRunnerBase):
                 bot_obj.name = "{}-{}-{}".format(self.genetic_name,
                                                  generation, s)
 
-                # Mutate the recipe.
-                num_mutations = random.randint(min_mutations,
-                                               min_mutations + mutation_range)
-
-                mutated_recipe = sample_recipe
-                mutated_recipe = bot_obj.mutate_recipe(mutated_recipe,
-                                                       num_mutations)
-
-                bot_obj.create_from_recipe(mutated_recipe)
-                bot_obj.set_metadata('mutations', num_mutations)
+                bot_obj.from_dict(sample.to_dict())
+                bot_obj.mutate()
                 self.genetic_pool.append(bot_obj)
         return
 
@@ -226,7 +191,9 @@ class GeneticRunner(GameRunnerBase):
         # NOTE: if --top is specified, create bots from the top recipes.
         top_index = 0
         botname = self.bots[self.genetic_index].name
-        top_recipes = self.config.top_bots.get_top_recipe_list(botname)
+        top_data = None
+        if self.config.use_top_bots:
+            top_data = self.config.top_bots.get_top_bot_data(botname)
         for s in range(1, self.config.num_samples + 1):
             bot_obj = self.bot_manager.create_bot(self.genetic_name)
 
@@ -240,12 +207,12 @@ class GeneticRunner(GameRunnerBase):
             bot_obj.name = "{}-{}-{}".format(self.genetic_name,
                                              generation, s)
 
-            if self.config.use_top_bots and top_recipes:
-                if top_index >= len(top_recipes):
+            if self.config.use_top_bots and top_data:
+                if top_index >= len(top_data):
                     # Out of range: Just repeat the first one.
-                    bot_obj.create_from_recipe(top_recipes[0])
+                    bot_obj.from_dict(top_data[0])
                 else:
-                    bot_obj.create_from_recipe(top_recipes[top_index])
+                    bot_obj.from_dict(top_data[top_index])
                     top_index += 1
             else:
                 bot_obj.create()

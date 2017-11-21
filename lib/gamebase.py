@@ -11,7 +11,7 @@ class GameBase(GameContext):
 
     def __init__(self, parent_context):
         """Create a new GameBase object."""
-        super().__init__(parent_context)
+        super().__init__(parent_context=parent_context)
         self.bots = []
         self.num_turns = {}
         self.current_bot_id = 0
