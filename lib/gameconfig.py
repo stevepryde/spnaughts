@@ -212,4 +212,4 @@ class GameConfig:
     def get_game_obj(self, parent_context):
         """Get a new instance of the SingleGame object for the game type."""
         class_ = self.get_game_class()
-        return class_(parent_context)
+        return class_(parent_context=parent_context)

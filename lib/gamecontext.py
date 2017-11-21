@@ -23,8 +23,9 @@ class GameContext:
         """
         self.config = get_config()
         self.parent_context = parent_context
-        self.path = None
         self.log_filename = None
+        self._path = None
+        self.subdir_prefix = None
 
         # LogHandler object - only instantiate on first use.
         self._log = None
@@ -37,19 +38,26 @@ class GameContext:
             self._log = LogHandler()
         return self._log
 
+    @property
+    def path(self):
+        """Recursively resolve the path for this context."""
+        if not self._path:
+            if self.parent_context:
+                # Resolve path recursively...
+                base_path = self.parent_context.path
+            else:
+                base_path = self.config.log_base_dir
+
+            if self.subdir_prefix:
+                self._path = get_unique_dir(base_path=base_path,
+                                            prefix=self.subdir_prefix)
+            else:
+                self._path = base_path
+        return self._path
+
     def enable_file_logging(self, subdir_prefix=None):
         """Enable logging to a file."""
-        if self.parent_context:
-            base_path = self.parent_context.path
-        else:
-            base_path = self.config.log_base_dir
-
-        if subdir_prefix:
-            self.path = get_unique_dir(base_path=base_path,
-                                       prefix=subdir_prefix)
-        else:
-            self.path = base_path
-
+        self.subdir_prefix = subdir_prefix
         self.log_filename = self.get_unique_filename(
             prefix=self.__class__.__name__.lower(),
             suffix='.log')

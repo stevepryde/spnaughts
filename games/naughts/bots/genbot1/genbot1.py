@@ -66,13 +66,11 @@ currently.
 """
 
 
-import os
 import random
 
 
 from games.naughts.bots.bot_base import Bot
 from games.naughts.bots.genbot1 import nodes
-from lib.log import log_error
 
 
 class GENBOT1(Bot):
@@ -84,50 +82,41 @@ class GENBOT1(Bot):
         self.genetic = True
         self.nodes = []
         self.output_nodes = []
-        self.initial_recipe = None
+        return
+
+    @property
+    def recipe(self):
+        """Get the recipe for this bot."""
+        recipe_blocks = []
+        nodelist = list(self.nodes)
+        nodelist.extend(list(self.output_nodes))
+
+        for node in nodelist:
+            name = type(node).__name__
+            ingredient_blocks = [name]
+            for input_node in node.input_nodes:
+                ingredient_blocks.append(str(input_node.index))
+
+            recipe_blocks.append(':'.join(ingredient_blocks))
+
+        return ','.join(recipe_blocks)
+
+    def to_dict(self):
+        """Serialise."""
+        self.set_data('recipe', self.recipe)
+        return super().to_dict()
+
+    def from_dict(self, data_dict):
+        """Load data and metadata from dict."""
+        super().from_dict(data_dict)
+        self.create_from_recipe(self.get_data('recipe'))
         return
 
     def create(self):
         """Create a new GENBOT1, using the specified config.
 
-        :param config: The configuration details.
+        Create new brain consisting of random nodes.
         """
-        self.nodes = []
-        self.output_nodes = []
-        self.initial_recipe = None
-        if self.config.custom_arg:
-            params = self.config.custom_arg.split(',')
-            for param in params:
-                parts = param.split(':')
-                if parts[0] == 'recipefile':
-                    recipefn = parts[1]
-                    if not os.path.exists(recipefn):
-                        log_error(
-                            "Recipe file '{}' not found".format(recipefn))
-                    else:
-                        try:
-                            with open(recipefn, 'rb') as rf:
-                                self.initial_recipe = rf.read()
-
-                            # Strip trailing newline chars.
-                            self.initial_recipe = \
-                                self.initial_recipe.decode('UTF8').rstrip('\n')
-                            self.log_debug("Loaded recipe from file '{}'".
-                                           format(recipefn))
-                        except OSError as e:
-                            log_error("Error reading recipe from file "
-                                      "'{}': {}".
-                                      format(recipefn, str(e)))
-                            return
-
-        if self.initial_recipe:
-            self.create_from_recipe(self.initial_recipe)
-        else:
-            self.create_brain()
-        return
-
-    def create_brain(self):
-        """Create new brain consisting of random nodes."""
         self.log_trace('Creating brain')
 
         self.nodes = []
@@ -163,25 +152,7 @@ class GENBOT1(Bot):
             self.output_nodes.append(node)
 
         # And we're done.
-
         return
-
-    @property
-    def recipe(self):
-        """Get the recipe for this bot."""
-        recipe_blocks = []
-        nodelist = list(self.nodes)
-        nodelist.extend(list(self.output_nodes))
-
-        for node in nodelist:
-            name = type(node).__name__
-            ingredient_blocks = [name]
-            for input_node in node.input_nodes:
-                ingredient_blocks.append(str(input_node.index))
-
-            recipe_blocks.append(':'.join(ingredient_blocks))
-
-        return ','.join(recipe_blocks)
 
     def create_from_recipe(self, recipe):
         """Create new bot from recipe."""
@@ -209,61 +180,24 @@ class GENBOT1(Bot):
                 self.nodes.append(instance)
                 instance.index = node_index
                 node_index += 1
-
         return
 
-    def mutate_recipe(self, recipe, num_mutations=1):
-        """Mutate the specified recipe."""
-        recipe_blocks = recipe.split(',')
-
-        # Get list of non-output nodes.
-        normal_node_count = 0
-        for block in recipe_blocks:
-            ingredient = block.split(':')
-
-            if ingredient[0] == 'NODE_OUTPUT':
-                break
-
-            normal_node_count += 1
-
-        # If we hit an input node, try again, up to 10 times.
-        for _ in range(10):
-            mutated_index = random.randrange(len(recipe_blocks))
-
-            ingredient = recipe_blocks[mutated_index]
-            ingredient_blocks = ingredient.split(':')
-
-            name = ingredient_blocks[0]
-            if name == 'NODE_INPUT':
+    def mutate(self):
+        """Mutate the bot."""
+        mutable_nodes = []
+        for node in self.nodes:
+            if not node.input_nodes:
                 continue
+            mutable_nodes.append(node)
 
-            node = None
+        node = random.choice(mutable_nodes)
+        num_inputs = node.num_inputs
 
-            if name == 'NODE_OUTPUT':
-                class_ = getattr(nodes, name)
-                node = class_()
-            else:
-                # Output nodes must stay as output nodes, but all others can be
-                # changed.
-                node = self.get_random_node_instance()
-                name = type(node).__name__
-
-            num_inputs = node.num_inputs
-            new_ingredient_blocks = [name]
-
-            # The inputs must come from non-output nodes, and with an index
-            # lower than the current index.
-            max_index = min(mutated_index, normal_node_count - 1)
-
-            input_numbers = random.sample(range(max_index), num_inputs)
-            for num in input_numbers:
-                new_ingredient_blocks.append(str(num))
-
-            # Replace the ingredient.
-            recipe_blocks[mutated_index] = ':'.join(new_ingredient_blocks)
-            break
-
-        return ','.join(recipe_blocks)
+        input_numbers = random.sample(range(node.index), num_inputs)
+        node.input_nodes = []
+        for num in input_numbers:
+            node.input_nodes.append(self.nodes[num])
+        return self
 
     def get_random_node_instance(self):
         """Create random node instance."""
@@ -324,39 +258,20 @@ class GENBOT1(Bot):
         self.log_trace('Engaging brain')
 
         # Populate input nodes with the current board state.
-        i = 0
         for p in range(9):
-            if current_board.getat(p) == ' ':
-                self.nodes[i].set_value(1)
-            else:
-                self.nodes[i].set_value(0)
-
-            i += 1
+            self.nodes[p].set_value(current_board.getat(p) == ' ')
 
         my_id = self.identity
-
         for p in range(9):
-            if current_board.getat(p) == my_id:
-                self.nodes[i].set_value(1)
-            else:
-                self.nodes[i].set_value(0)
-
-            i += 1
+            self.nodes[p + 9].set_value(current_board.getat(p) == my_id)
 
         their_id = self.other_identity
-
         for p in range(9):
-            if current_board.getat(p) == their_id:
-                self.nodes[i].set_value(1)
-            else:
-                self.nodes[i].set_value(0)
-
-            i += 1
-
+            self.nodes[p + 18].set_value(current_board.getat(p) == their_id)
         self.log_trace('Input nodes are populated')
 
         # Now process the brain.
-        for index in range(i, len(self.nodes)):
+        for index in range(27, len(self.nodes)):
             self.nodes[index].update()
 
         self.log_trace('Brain has been processed')

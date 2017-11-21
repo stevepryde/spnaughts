@@ -87,7 +87,7 @@ class LogHandler:
         """Set up console logging."""
         self.console_logging = True
         logger = logging.getLogger(self.name)
-        logger.setLevel(logging.INFO)
+        logger.setLevel(logging.DEBUG)
 
         # Create console handler with a higher log level.
         ch = RainbowLoggingHandler(

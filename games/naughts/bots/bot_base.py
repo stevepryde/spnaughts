@@ -9,6 +9,7 @@ Bots can optionally implement setup() and process_result().
 import os
 
 from lib.gameplayer import GamePlayer
+from lib.globals import log_debug, log_trace
 
 
 class Bot(GamePlayer):
@@ -25,24 +26,6 @@ class Bot(GamePlayer):
             return 'O'
         return 'X'
 
-    def clear_score(self):
-        """Set the score to None."""
-        self.score = None
-        return
-
-    def set_metadata(self, key, value):
-        """Set the specified metadata, as given by key and value."""
-        self.metadata[key] = value
-        return
-
-    def get_metadata(self, key):
-        """Get the metadata for this key."""
-        return self.metadata.get(key)
-
-    def create_from_recipe(self, recipe):
-        """Create this bot from the specified recipe."""
-        return
-
     def get_temp_path(self):
         """Get the temp path for this bot, creating it if necessary."""
         assert self.temppath is not None
@@ -55,10 +38,6 @@ class Bot(GamePlayer):
         self.temppath = os.path.join(temppathbase, lcname)
         return
 
-    def setup(self):
-        """Set up this bot."""
-        return
-
     def do_turn(self, game_obj):
         """
         Handle a single turn.
@@ -69,15 +48,6 @@ class Bot(GamePlayer):
         :returns: The position of the proposed move.
         """
         return 0
-
-    def process_result(self, status, score):
-        """
-        Process the result.
-
-        :param status: One of, 'TiE', 'WIN', or 'LOSS'.
-        :param score: The score achieved by this bot.
-        """
-        return
 
     ##########################################################################
     #
