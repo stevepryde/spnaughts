@@ -1,24 +1,24 @@
 """Worker process for running batches from a queue."""
 
 import multiprocessing
+import time
 
 
 class BatchWorker(multiprocessing.Process):
     """Worker class for a single 'thread'."""
 
-    def __init__(self, batch_queue, score_threshold):
+    def __init__(self, q_in, q_out, score_threshold):
         """
         Create new BatchWorker object.
 
-        :param batch_queue: collections.deque() object containing batches to
-            run.
+        :param q_in: Queue of batches for input.
+        :param q_out: Queue to output completed batches to.
         :param score_threshold: Maximum score to beat.
         """
         super().__init__()
 
-        self.batch_queue = batch_queue
-        self.manager = multiprocessing.Manager()
-        self.scores = self.manager.dict()
+        self.q_in = q_in
+        self.q_out = q_out
         self.score_threshold = score_threshold
         return
 
@@ -26,27 +26,32 @@ class BatchWorker(multiprocessing.Process):
         """Run batches until the queue is empty."""
         try:
             while True:
-                batch = self.batch_queue.get()
+                batch = self.q_in.get()
 
                 # The game runner signals the end of the queue by enqueuing
                 # 'None'.
                 if batch is None:
+                    self.q_out.put(None)
                     break
 
-                info = batch.batch_info
-                batch_scores = batch.run_batch()
-                if batch_scores is not None:
-                    self.scores[info['sample']] = batch_scores
+                genetic_index = batch.info['index']
+                avg_scores = batch.run_batch()
+                genetic_score = avg_scores[genetic_index]
+
+                batch.info['avg_scores'] = avg_scores
+                batch.info['genetic_score'] = genetic_score
+                batch.bots[genetic_index].score = genetic_score
+                batch.info['bot_data'] = batch.bots[genetic_index].to_dict()
 
                 win = ""
-                score = batch_scores[info['index']]
-                if score > self.score_threshold:
+                if genetic_score > self.score_threshold:
                     win = "*"
 
                 print("Completed batch for sample {:5d} :: score = {:.3f} {}".
-                      format(info['sample'], score, win))
+                      format(batch.info['sample'], genetic_score, win))
 
-                self.batch_queue.task_done()
+                self.q_out.put(batch)
+
         except KeyboardInterrupt:
             print("Cancelled")
         return

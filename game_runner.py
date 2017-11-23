@@ -28,8 +28,6 @@ if __name__ == '__main__':
             runner = singlerunner.SingleRunner()
 
         runner.run()
-        print("Completed")
-
     except KeyboardInterrupt:
         quit_game("Cancelled...")
 

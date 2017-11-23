@@ -24,8 +24,8 @@ class BotManager:
         self.context = context
         return
 
-    def create_bot(self, module_name):
-        """Create new bot object."""
+    def get_bot_class(self, module_name):
+        """Get the class name for the bot."""
         config = get_config()
         full_module_path = "games.{0}.bots.{1}.{1}".format(config.game,
                                                            module_name)
@@ -41,6 +41,15 @@ class BotManager:
         # name, but all uppercase.
         classname = module_name.upper()
         class_type = getattr(module, classname)
+        return class_type
+
+    def create_bot(self, module_name):
+        """Create new bot object."""
+        class_type = self.get_bot_class(module_name)
+        return self.create_bot_from_class(class_type)
+
+    def create_bot_from_class(self, class_type):
+        """Create new bot object from class."""
         bot_obj = class_type(self.context)
         bot_obj.set_temp_path_base(BOT_TEMP_PATH)
         return bot_obj

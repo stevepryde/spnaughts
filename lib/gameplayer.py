@@ -97,11 +97,34 @@ class GamePlayer(GameContext):
         """Process one game turn."""
         return
 
-    def process_result(self, status, score):
+    def process_game_result(self, result):
         """
         Process the result of a single game.
 
-        :param status: One of, 'TIE', 'WIN', or 'LOSS'.
-        :param score: The score achieved by this bot.
+        Note that this bot instance will not accumulate any state from other
+        games. Use it to update the state, and then process the state data
+        from all games in process_batch_result().
+
+        :param result: GameResult object.
+        """
+        return
+
+    def process_batch_result(self, score, score_other, clones):
+        """
+        Process the result of a batch.
+
+        Each game creates a new clone, and each clone holds the data from
+        process_game_result(). This function is called at the end of the
+        batch to allow processing of the data from all of the games,
+        represented by the list of clones.
+
+        Note that the bot instance on which process_batch_result() is called
+        knows nothing about the previous games, and must use the clones to
+        process the data collected during games.
+
+        :param score: My average score.
+        :param score_other: The other bot's average score.
+        :param clones: List of bot clones, each containing data.
+
         """
         return
