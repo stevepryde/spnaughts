@@ -2,6 +2,7 @@
 
 
 import collections
+import copy
 import random
 
 
@@ -25,8 +26,16 @@ class Batch(GameContext):
         super().__init__(parent_context=parent_context)
         self.bots = bots
 
+        # If using the omnibot, bots get cloned for each game split.
+        # This means we'll end up with a lot of copies of bots, each
+        # potentially containing state info etc.
+        # To allow bots to aggregate and process all of this data, we
+        # pass the list of bots to each bot's process_batch_result().
+        self.bot_clones0 = []
+        self.bot_clones1 = []
+
         self.label = ""
-        self.batch_info = {}  # Used by genetic.batchworker.
+        self.info = {}  # Used by genetic.batchworker.
 
         self.overall_results = {P1_WINS: 0, P2_WINS: 0, DRAW: 0}
         self.num_games_played = 0
@@ -137,6 +146,11 @@ class Batch(GameContext):
                           format(self.bots[0].name, avg_score[0],
                                  self.bots[1].name, avg_score[1]))
 
+            self.bots[0].process_batch_result(avg_score[0], avg_score[1],
+                                              clones=self.bot_clones0)
+            self.bots[1].process_batch_result(avg_score[1], avg_score[0],
+                                              clones=self.bot_clones1)
+
             return avg_score
         return [0, 0]
 
@@ -149,10 +163,15 @@ class Batch(GameContext):
             game_obj = self.config.get_game_obj(parent_context=self)
             if self.config.log_games:
                 game_obj.enable_file_logging()
-            game_info = game_obj.run(self.bots)
+            bot_list = copy.deepcopy(self.bots)
+            game_info = game_obj.run(bot_list)
             if game_info is None:
                 self.log.error("Game {} failed!".format(game_num))
                 return
+
+            # Collect bots.
+            self.bot_clones0.append(game_obj.bots[0])
+            self.bot_clones1.append(game_obj.bots[1])
 
             self.process_game_result(game_num, game_info)
         return
@@ -161,7 +180,8 @@ class Batch(GameContext):
         """Pseudo-batch that actually runs every possible move combination."""
         game_num = 0
         game_obj_initial = self.config.get_game_obj(parent_context=self)
-        game_obj_initial.start(self.bots)
+        bot_list = copy.deepcopy(self.bots)
+        game_obj_initial.start(bot_list)
 
         game_queue = collections.deque()
         game_queue.append(game_obj_initial)
@@ -186,6 +206,10 @@ class Batch(GameContext):
                             return
 
                         self.process_game_result(game_num, game_info)
+
+                        # Collect bots.
+                        self.bot_clones0.append(new_game_obj.bots[0])
+                        self.bot_clones1.append(new_game_obj.bots[1])
                     else:
                         # This game has not yet finished, so add it to the end
                         # of the queue.

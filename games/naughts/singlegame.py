@@ -1,8 +1,11 @@
 """Module for running a single game of naughts and crosses."""
 
 
-from lib.gamebase import GameBase
+import copy
+
 from games.naughts import board
+from lib.gamebase import GameBase
+from lib.gameresult import GameResult, STATUS_LOSS, STATUS_TIE, STATUS_WIN
 
 
 class SingleGame(GameBase):
@@ -24,10 +27,10 @@ class SingleGame(GameBase):
     def clone(self):
         """Clone this instance of SingleGame."""
         cloned_game = SingleGame(self.parent_context)
-        cloned_game.bots = list(self.bots)
-        cloned_game.game_board = self.game_board.copy()
+        cloned_game.bots = copy.deepcopy(self.bots)
+        cloned_game.game_board = copy.deepcopy(self.game_board)
         cloned_game.current_bot_id = self.current_bot_id
-        cloned_game.num_turns = dict(self.num_turns)
+        cloned_game.num_turns = copy.deepcopy(self.num_turns)
         return cloned_game
 
     def start(self, bots):
@@ -118,56 +121,64 @@ class SingleGame(GameBase):
             self.log.error("No bots have been set up - was this game started?")
             return
 
-        result = self.game_board.get_game_state()
+        outcome = self.game_board.get_game_state()
 
-        if result == 0:
+        if outcome == 0:
             self.log.error("Game ended with invalid state of 0 - was this "
                            "game finished?")
             return
 
-        score_X = self.calculate_score(self.num_turns['X'], result == 1,
-                                       result == 3)
-        score_O = self.calculate_score(self.num_turns['O'], result == 2,
-                                       result == 3)
+        result_X = GameResult()
+        result_O = GameResult()
 
-        if result == 1:  # X wins
+        if outcome == 1:
             self.log.info("Bot '{}' wins".format(self.bots[0].name))
-            self.bots[0].process_result('WIN', score_X)
-            self.bots[1].process_result('LOSS', score_O)
-        elif result == 2:  # O wins
+            result_X.status = STATUS_WIN
+            result_O.status = STATUS_LOSS
+        elif outcome == 2:
             self.log.info("Bot '{}' wins".format(self.bots[1].name))
-            self.bots[0].process_result('LOSS', score_X)
-            self.bots[1].process_result('WIN', score_O)
-        elif result == 3:  # Tie
+            result_X.status = STATUS_LOSS
+            result_O.status = STATUS_WIN
+        elif outcome == 3:
             self.log.info("It's a TIE")
-            self.bots[0].process_result('TIE', score_X)
-            self.bots[1].process_result('TIE', score_O)
+            result_X.status = STATUS_TIE
+            result_O.status = STATUS_TIE
         else:
-            self.log.error("Game ended with invalid state ({})".format(result))
+            self.log.error(
+                "Game ended with invalid state ({})".format(outcome))
             return
 
-        self.log.info("Scores: '{}':{:.2f} , '{}':{:.2f}".
-                      format(self.bots[0].name, score_X,
-                             self.bots[1].name, score_O))
+        result_X.score = self.calculate_score(self.num_turns['X'],
+                                              result_X.status)
+        result_O.score = self.calculate_score(self.num_turns['O'],
+                                              result_O.status)
 
-        game_info = {'result': result,
-                     'scores': {'X': score_X, 'O': score_O}}
+        self.bots[0].process_game_result(result_X)
+        self.bots[1].process_game_result(result_O)
+
+        self.log.info("Scores: '{}':{:.2f} , '{}':{:.2f}".
+                      format(self.bots[0].name, result_X.score,
+                             self.bots[1].name, result_O.score))
+
+        game_info = {'result': outcome,
+                     'scores': {'X': result_X.score, 'O': result_O.score}}
         return game_info
 
-    def calculate_score(self, num_turns, is_win, is_draw):
+    def calculate_score(self, num_turns, status):
         """
         Calculate the 'score' for this game.
 
         :param num_turns: The number of turns played.
-        :param is_win: True if this game is a win.
-        :param is_draw: True if this game is a draw.
+        :param status: The status code (see GameResult).
         :returns: The game score, as float.
         """
         score = 10 - num_turns
-        if not is_win:
-            if is_draw:
+        if status != STATUS_WIN:
+            if status == STATUS_TIE:
                 score = 0
             else:
+                assert status == STATUS_LOSS, \
+                    "Invalid status: {}".format(status)
                 # Weight losses much more heavily than wins
                 score = -score * 10
         return score

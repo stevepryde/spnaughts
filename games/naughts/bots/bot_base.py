@@ -2,7 +2,8 @@
 Base class for AI naughts and crosses bots.
 
 All bots must implement do_turn().
-Bots can optionally implement setup() and process_result().
+Bots can optionally implement setup() and process_game_result().
+Genetic bots can also optionally implement process_batch_result().
 """
 
 

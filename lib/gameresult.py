@@ -4,7 +4,7 @@
 STATUS_NONE = 'NONE'
 STATUS_WIN = 'WIN'
 STATUS_LOSS = 'LOSS'
-STATUS_DRAW = 'DRAW'
+STATUS_TIE = 'TIE'
 
 
 class GameResult:

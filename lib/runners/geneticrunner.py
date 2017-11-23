@@ -2,13 +2,11 @@
 
 
 import json
-import multiprocessing
-import random
+import time
 
 
-from lib.batch import Batch
 from lib.runners.gamerunnerbase import GameRunnerBase
-from lib.runners.genetic.batchworker import BatchWorker
+from lib.runners.genetic.processor import Processor, ProcessorMP
 
 MAX_SCORE = 7.0
 
@@ -24,13 +22,7 @@ class GeneticRunner(GameRunnerBase):
         self.genetic_bot_index = 0
         self.genetic_index = 0
         self.genetic_name = None
-        self.genetic_pool = []
-
-        self.num_threads = multiprocessing.cpu_count() - 2
-        if self.num_threads < 1:
-            self.num_threads = 1
-
-        self.log.info("Using {} threads...".format(self.num_threads))
+        self.genetic_class = None
         return
 
     def setup(self):
@@ -50,12 +42,16 @@ class GeneticRunner(GameRunnerBase):
         # Store the name of the genetic bot.
         # This is used to generate new ones.
         self.genetic_name = self.bots[self.genetic_index].name
+        self.genetic_class = self.bot_manager.get_bot_class(self.genetic_name)
         return
 
     def run(self):
         """Run the games."""
+        start_time = time.monotonic()
+
         self.setup()
         genetic_bot = self.bots[self.genetic_index]
+        other_bot = self.bots[0 if self.genetic_index == 1 else 1]
 
         if not genetic_bot.genetic:
             self.log.critical("GENETICRUNNER: Neither bot is a genetic bot!")
@@ -64,58 +60,32 @@ class GeneticRunner(GameRunnerBase):
         selected_samples = []
         score_threshold = -999  # This will be reset after first round.
 
+        processor = ProcessorMP(context=self, bot=other_bot,
+                                genetic_index=self.genetic_index)
+
         for gen in range(self.config.num_generations):
             self.log.info("--------------------------")
             self.log.info("Generation '{}':".format(str(gen)))
 
             # Set up the genetic bot pool.
-            self.generate_samples(selected_samples, gen)
+            if selected_samples:
+                new_samples = self.generate_samples(selected_samples, gen)
+            else:
+                new_samples = self.generate_original_samples(gen)
 
-            # Set up the batch queue and worker threads.
-            batch_queue = multiprocessing.JoinableQueue()
-            threads = []
-            for _ in range(self.num_threads):
-                thr = BatchWorker(batch_queue, score_threshold)
-                thr.start()
-                threads.append(thr)
-
-            for s in range(len(self.genetic_pool)):
-                bot_list = []
-                for index in [0, 1]:
-                    if index == self.genetic_index:
-                        bot_list.append(self.genetic_pool[s])
-                    else:
-                        bot_list.append(self.bots[index])
-
-                batch = Batch(parent_context=self, bots=bot_list)
-                batch.label = "Gen {} - Sample {}".format(gen, s)
-                batch.batch_info = {'generation': gen,
-                                    'sample': s,
-                                    'index': self.genetic_index}
-                batch_queue.put(batch)
-
-            # Wait for all batches to process...
-            batch_queue.join()
-
-            # Tell the threads to stop.
-            for _ in range(self.num_threads):
-                batch_queue.put(None)
-
-            # Join threads and process scores.
-            scores = {}
-            for thr in threads:
-                thr.join()
-                scores.update(thr.scores)
-
-            # First get a dict of just the score we want.
-            for s, score_list in scores.items():
-                genetic_score = score_list[self.genetic_index]
-
-                # Set the score in the bot object.
-                self.genetic_pool[s].score = genetic_score
+            genetic_pool = []
+            for batch in processor.run(samples=new_samples,
+                                       generation_index=gen,
+                                       score_threshold=score_threshold):
+                # Collect scores.
+                sample = self.bot_manager.create_bot_from_class(
+                    self.genetic_class)
+                sample.from_dict(batch.info['bot_data'])
+                # sample.score = batch.info['genetic_score']
+                genetic_pool.append(sample)
 
             # Sort the pool based on score, in descending order.
-            sorted_pool = sorted(self.genetic_pool,
+            sorted_pool = sorted(genetic_pool,
                                  key=lambda bot: bot.score,
                                  reverse=True)
 
@@ -145,6 +115,9 @@ class GeneticRunner(GameRunnerBase):
                 bot_list = [x.to_dict() for x in selected_samples]
                 json.dump(bot_list, f)
 
+        end_time = time.monotonic()
+        duration = end_time - start_time
+        self.log.info("Completed in {:.2f} seconds".format(duration))
         return
 
     def generate_samples(self, input_samples, generation):
@@ -157,17 +130,15 @@ class GeneticRunner(GameRunnerBase):
         :param input_samples: List of input samples.
         :param generation: The generation number.
         """
-        if not input_samples:
-            return self.generate_original_samples(generation)
-
-        # Add the samples first. This allows the original samples to compete
-        # with the offspring, and guards against the scenario where all
-        # offspring are less-advantaged.
-        self.genetic_pool = list(input_samples)
-
         for sample in input_samples:
+            # Yield the original samples as well. This allows the original
+            # samples to compete with the offspring, and guards against the
+            # scenario where all offspring are less-advantaged.
+            yield sample
+
             for s in range(1, self.config.num_samples):
-                bot_obj = self.bot_manager.create_bot(self.genetic_name)
+                bot_obj = self.bot_manager.create_bot_from_class(
+                    self.genetic_class)
 
                 if not bot_obj:
                     self.log.critical("Error instantiating bot '{}'".
@@ -180,14 +151,12 @@ class GeneticRunner(GameRunnerBase):
 
                 bot_obj.from_dict(sample.to_dict())
                 bot_obj.mutate()
-                self.genetic_pool.append(bot_obj)
+                yield bot_obj
         return
 
     def generate_original_samples(self, generation):
         """Generate samples from scratch."""
         # Start from scratch, just create random bots.
-        self.genetic_pool = []
-
         # NOTE: if --top is specified, create bots from the top recipes.
         top_index = 0
         botname = self.bots[self.genetic_index].name
@@ -195,7 +164,8 @@ class GeneticRunner(GameRunnerBase):
         if self.config.use_top_bots:
             top_data = self.config.top_bots.get_top_bot_data(botname)
         for s in range(1, self.config.num_samples + 1):
-            bot_obj = self.bot_manager.create_bot(self.genetic_name)
+            bot_obj = self.bot_manager.create_bot_from_class(
+                self.genetic_class)
 
             if not bot_obj:
                 self.log.critical("Error instantiating bot '{}'".
@@ -216,7 +186,8 @@ class GeneticRunner(GameRunnerBase):
                     top_index += 1
             else:
                 bot_obj.create()
-            self.genetic_pool.append(bot_obj)
+
+            yield bot_obj
         return
 
     def select_samples(self, sorted_pool):
