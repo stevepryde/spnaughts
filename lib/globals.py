@@ -1,5 +1,8 @@
 """Globals accessible from anywhere."""
 
+import contextlib
+import time
+
 
 DEFAULT_LOG = None
 GLOBAL_CONFIG = None
@@ -65,4 +68,26 @@ def log_critical(text):
     """Write to log at CRITICAL level."""
     if DEFAULT_LOG:
         DEFAULT_LOG.critical(text)
+    return
+
+
+def time_this(func):
+    def inner(*args, **kwargs):
+        start_time = time.monotonic()
+        ret = func(*args, **kwargs)
+        end_time = time.monotonic()
+        duration = end_time - start_time
+        log_debug("TIME [{}]: {:.2f} seconds".format(func.__name__, duration))
+        return ret
+
+    return inner
+
+
+@contextlib.contextmanager
+def timer(label):
+    start_time = time.monotonic()
+    yield
+    end_time = time.monotonic()
+    duration = end_time - start_time
+    log_debug("TIME [{}]: {:.2f} seconds".format(label, duration))
     return

@@ -7,7 +7,7 @@ import time
 class BatchWorker(multiprocessing.Process):
     """Worker class for a single 'thread'."""
 
-    def __init__(self, q_in, q_out, score_threshold):
+    def __init__(self, input_batches, q_out, score_threshold):
         """
         Create new BatchWorker object.
 
@@ -17,41 +17,38 @@ class BatchWorker(multiprocessing.Process):
         """
         super().__init__()
 
-        self.q_in = q_in
+        self.batches = input_batches
+        self.outputs = []
         self.q_out = q_out
         self.score_threshold = score_threshold
         return
 
     def run(self):
-        """Run batches until the queue is empty."""
+        """Run batches."""
         try:
-            while True:
-                batch = self.q_in.get()
-
-                # The game runner signals the end of the queue by enqueuing
-                # 'None'.
-                if batch is None:
-                    self.q_out.put(None)
-                    break
-
-                genetic_index = batch.info['index']
+            for batch in self.batches:
+                genetic_index = batch.info["index"]
                 avg_scores = batch.run_batch()
                 genetic_score = avg_scores[genetic_index]
 
-                batch.info['avg_scores'] = avg_scores
-                batch.info['genetic_score'] = genetic_score
+                batch.info["avg_scores"] = avg_scores
+                batch.info["genetic_score"] = genetic_score
                 batch.bots[genetic_index].score = genetic_score
-                batch.info['bot_data'] = batch.bots[genetic_index].to_dict()
+                batch.info["bot_data"] = batch.bots[genetic_index].to_dict()
 
                 win = ""
                 if genetic_score > self.score_threshold:
                     win = "*"
 
-                print("Completed batch for sample {:5d} :: score = {:.3f} {}".
-                      format(batch.info['sample'], genetic_score, win))
+                print(
+                    "Completed batch for sample {:5d} :: score = {:.3f} {}".format(
+                        batch.info["sample"], genetic_score, win
+                    )
+                )
 
                 self.q_out.put(batch)
 
+            self.q_out.put(None)
         except KeyboardInterrupt:
             print("Cancelled")
         return

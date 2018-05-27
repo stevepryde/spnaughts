@@ -4,9 +4,11 @@
 import collections
 import copy
 import random
+import time
 
 
 from lib.gamecontext import GameContext
+from lib.globals import time_this
 
 P1_WINS = 1
 P2_WINS = 2
@@ -66,7 +68,7 @@ class Batch(GameContext):
         self.overall_results = {P1_WINS: 0, P2_WINS: 0, DRAW: 0}
         self.num_games_played = 0
 
-        random.seed(1)
+        # random.seed(1)
         return
 
     def process_game_result(self, game_num, game_info):

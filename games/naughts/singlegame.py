@@ -153,6 +153,8 @@ class SingleGame(GameBase):
         result_O.score = self.calculate_score(self.num_turns['O'],
                                               result_O.status)
 
+        self.bots[0].score = result_X.score
+        self.bots[1].score = result_O.score
         self.bots[0].process_game_result(result_X)
         self.bots[1].process_game_result(result_O)
 

@@ -24,7 +24,7 @@ class SingleRunner(GameRunnerBase):
             bots[index].clear_score()
             bots[index].identity = identity
 
-        random.seed(1)
+        # random.seed(1)
         game_obj = self.config.get_game_obj(self)
         game_obj.enable_file_logging()
         game_obj.run(bots)

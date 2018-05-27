@@ -5,6 +5,7 @@ import time
 
 from lib.batch import Batch
 from lib.runners.genetic.batchworker import BatchWorker
+from lib.globals import timer
 
 
 class Processor:
@@ -33,25 +34,28 @@ class Processor:
             batch = Batch(parent_context=self.context, bots=bot_list)
             batch.label = "Gen {} - Sample {}".format(generation_index, index)
             batch.info = {
-                'generation': generation_index,
-                'sample': index,
-                'index': self.genetic_index
+                "generation": generation_index,
+                "sample": index,
+                "index": self.genetic_index,
             }
 
             avg_scores = batch.run_batch()
 
             genetic_score = avg_scores[self.genetic_index]
-            batch.info['avg_scores'] = avg_scores
-            batch.info['genetic_score'] = genetic_score
+            batch.info["avg_scores"] = avg_scores
+            batch.info["genetic_score"] = genetic_score
             batch.bots[self.genetic_index].score = genetic_score
-            batch.info['bot_data'] = batch.bots[self.genetic_index].to_dict()
+            batch.info["bot_data"] = batch.bots[self.genetic_index].to_dict()
 
             win = ""
             if genetic_score > score_threshold:
                 win = "*"
 
-            print("Completed batch for sample {:5d} :: score = {:.3f} {}".
-                  format(batch.info['sample'], genetic_score, win))
+            print(
+                "Completed batch for sample {:5d} :: score = {:.3f} {}".format(
+                    batch.info["sample"], genetic_score, win
+                )
+            )
 
             yield batch
         return
@@ -80,52 +84,49 @@ class ProcessorMP(Processor):
         """
 
         # Set up the batch queue and worker threads.
-        q_in = multiprocessing.Queue()
-        q_out = multiprocessing.Queue()
         workers = []
+        worker_inputs = {}
+        q_out = multiprocessing.Queue()
 
-        # Start the workers before populating the queue.
-        # This way they can get busy using other cores while we're
-        # adding stuff to the queue.
-        for _ in range(self.num_workers):
-            worker = BatchWorker(q_in, q_out, score_threshold)
-            worker.start()
-            workers.append(worker)
+        for i in range(self.num_workers):
+            worker_inputs[i] = []
 
-        for index, sample in enumerate(samples):
-            if self.genetic_index == 0:
-                bot_list = [sample, self.bot]
-            else:
-                bot_list = [self.bot, sample]
+        with timer("Generate batches"):
+            for index, sample in enumerate(samples):
+                if self.genetic_index == 0:
+                    bot_list = [sample, self.bot]
+                else:
+                    bot_list = [self.bot, sample]
 
-            batch = Batch(parent_context=self.context, bots=bot_list)
-            batch.label = "Gen {} - Sample {}".format(generation_index, index)
-            batch.info = {
-                'generation': generation_index,
-                'sample': index,
-                'index': self.genetic_index
-            }
-            q_in.put(batch)
+                batch = Batch(parent_context=self.context, bots=bot_list)
+                batch.label = "Gen {} - Sample {}".format(generation_index, index)
+                batch.info = {
+                    "generation": generation_index,
+                    "sample": index,
+                    "index": self.genetic_index,
+                }
 
-        # Tell the workers to stop.
-        for _ in range(len(workers)):
-            q_in.put(None)
+                qindex = index % self.num_workers
+                worker_inputs[qindex].append(batch)
 
-        workers_finished = 0
-        while True:
-            batch = q_out.get()
-            if batch is None:
-                workers_finished += 1
-                if workers_finished >= len(workers):
-                    break
-                continue
+        with timer("Start workers"):
+            for qid in range(self.num_workers):
+                worker = BatchWorker(worker_inputs[qid], q_out, score_threshold)
+                worker.start()
+                workers.append(worker)
 
-            yield batch
+        with timer("Wait for workers"):
+            workers_finished = 0
+            while workers_finished < len(workers):
+                batch = q_out.get()
+                if batch is None:
+                    workers_finished += 1
+                    continue
 
-        # Queue should now be empty.
-        assert q_out.empty(), "Out queue is not empty!"
+                yield batch
 
-        for worker in workers:
-            worker.join()
-
+        with timer("Join workers"):
+            for worker in workers:
+                worker.join()
         return
+
