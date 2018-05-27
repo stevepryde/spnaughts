@@ -5,3 +5,4 @@ custom
 /.vscode/
 .mypy_cache/
 /data/
+*.code-workspace

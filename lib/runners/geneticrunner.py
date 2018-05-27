@@ -35,8 +35,10 @@ class GeneticRunner(GameRunnerBase):
             self.genetic_index = 1
         elif self.bots[1].genetic:
             # Both bots are genetic - this is not allowed.
-            self.log.critical("GENETICRUNNER: Both bots are genetic. "
-                              "Only first bot will use the genetic algorithm")
+            self.log.critical(
+                "GENETICRUNNER: Both bots are genetic. "
+                "Only first bot will use the genetic algorithm"
+            )
             self.genetic_index = 0
 
         # Store the name of the genetic bot.
@@ -60,8 +62,9 @@ class GeneticRunner(GameRunnerBase):
         selected_samples = []
         score_threshold = -999  # This will be reset after first round.
 
-        processor = ProcessorMP(context=self, bot=other_bot,
-                                genetic_index=self.genetic_index)
+        processor = ProcessorMP(
+            context=self, bot=other_bot, genetic_index=self.genetic_index
+        )
 
         for gen in range(self.config.num_generations):
             self.log.info("--------------------------")
@@ -74,20 +77,19 @@ class GeneticRunner(GameRunnerBase):
                 new_samples = self.generate_original_samples(gen)
 
             genetic_pool = []
-            for batch in processor.run(samples=new_samples,
-                                       generation_index=gen,
-                                       score_threshold=score_threshold):
+            for batch in processor.run(
+                samples=new_samples,
+                generation_index=gen,
+                score_threshold=score_threshold,
+            ):
                 # Collect scores.
-                sample = self.bot_manager.create_bot_from_class(
-                    self.genetic_class)
-                sample.from_dict(batch.info['bot_data'])
+                sample = self.bot_manager.create_bot_from_class(self.genetic_class)
+                sample.from_dict(batch.info["bot_data"])
                 # sample.score = batch.info['genetic_score']
                 genetic_pool.append(sample)
 
             # Sort the pool based on score, in descending order.
-            sorted_pool = sorted(genetic_pool,
-                                 key=lambda bot: bot.score,
-                                 reverse=True)
+            sorted_pool = sorted(genetic_pool, key=lambda bot: bot.score, reverse=True)
 
             selected_samples = self.select_samples(sorted_pool)
 
@@ -95,23 +97,25 @@ class GeneticRunner(GameRunnerBase):
             selected_recipes = []
             for sample in selected_samples:
                 # Check if this is one of the top for this bot.
-                self.config.top_bots.check(self.bots[self.genetic_index].name,
-                                           sample)
+                self.config.top_bots.check(self.bots[self.genetic_index].name, sample)
 
                 score = sample.score
                 if score > score_threshold:
                     score_threshold = score
 
                 selected_scores.append("{:.3f}".format(score))
-                selected_recipes.append("[{:.3f}]: '{}'".
-                                        format(score, sample.recipe))
+                selected_recipes.append("[{:.3f}]: '{}'".format(score, sample.recipe))
 
-            self.log.info("Generation {} highest scores: [{}]".
-                          format(gen, ', '.join(selected_scores)))
+            self.log.info(
+                "Generation {} highest scores: [{}]".format(
+                    gen, ", ".join(selected_scores)
+                )
+            )
 
             # Write winning recipes to a file.
-            with self.open_unique_file(prefix="winning_recipes_GEN{:04d}".
-                                       format(gen)) as f:
+            with self.open_unique_file(
+                prefix="winning_recipes_GEN{:04d}".format(gen)
+            ) as f:
                 bot_list = [x.to_dict() for x in selected_samples]
                 json.dump(bot_list, f)
 
@@ -137,17 +141,16 @@ class GeneticRunner(GameRunnerBase):
             yield sample
 
             for s in range(1, self.config.num_samples):
-                bot_obj = self.bot_manager.create_bot_from_class(
-                    self.genetic_class)
+                bot_obj = self.bot_manager.create_bot_from_class(self.genetic_class)
 
                 if not bot_obj:
-                    self.log.critical("Error instantiating bot '{}'".
-                                      format(bot_obj.genetic_name))
+                    self.log.critical(
+                        "Error instantiating bot '{}'".format(bot_obj.genetic_name)
+                    )
                     return
 
                 # Name it using the generation and sample number.
-                bot_obj.name = "{}-{}-{}".format(self.genetic_name,
-                                                 generation, s)
+                bot_obj.name = "{}-{}-{}".format(self.genetic_name, generation, s)
 
                 bot_obj.from_dict(sample.to_dict())
                 bot_obj.mutate()
@@ -164,18 +167,17 @@ class GeneticRunner(GameRunnerBase):
         if self.config.use_top_bots:
             top_data = self.config.top_bots.get_top_bot_data(botname)
         for s in range(1, self.config.num_samples + 1):
-            bot_obj = self.bot_manager.create_bot_from_class(
-                self.genetic_class)
+            bot_obj = self.bot_manager.create_bot_from_class(self.genetic_class)
 
             if not bot_obj:
-                self.log.critical("Error instantiating bot '{}'".
-                                  format(self.genetic_name))
+                self.log.critical(
+                    "Error instantiating bot '{}'".format(self.genetic_name)
+                )
                 return
 
             # Name it using the generation and sample number.
             # This is generation 0.
-            bot_obj.name = "{}-{}-{}".format(self.genetic_name,
-                                             generation, s)
+            bot_obj.name = "{}-{}-{}".format(self.genetic_name, generation, s)
 
             if self.config.use_top_bots and top_data:
                 if top_index >= len(top_data):

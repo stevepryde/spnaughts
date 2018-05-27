@@ -1,16 +1,36 @@
-"""Same as genbot1, except all moves use the magic algorithm."""
+"""Same as genbot2, but with smart mutation."""
 
-
+from collections import deque
 import os
 import random
 
 
 from games.naughts.bots.bot_base import Bot
-from games.naughts.bots.genbot2 import nodes
+from games.naughts.bots.genbot3 import nodes
 
 
-class GENBOT2(Bot):
-    """Genbot2 - all moves are determined by the brain algorithm."""
+NODES = [
+    nodes.NODE_INPUT,
+    nodes.NODE_OUTPUT,
+    nodes.NODE_NOT,
+    nodes.NODE_AND,
+    nodes.NODE_OR,
+    nodes.NODE_XOR,
+    nodes.NODE_NAND,
+    nodes.NODE_NOR,
+    nodes.NODE_XNOR
+]
+
+NODE_DEFS = {k: v for k, v in enumerate(NODES)}
+
+
+def get_node_type_index(node):
+    """Get index for node type."""
+    return NODES.index(node.__class__)
+
+
+class GENBOT3(Bot):
+    """Genbot3 - as per genbot2 but with smart mutation."""
 
     def __init__(self, *args, **kwargs):
         """Create new GENBOT2."""
@@ -18,23 +38,26 @@ class GENBOT2(Bot):
         self.genetic = True
         self.nodes = []
         self.output_nodes = []
+        self.node_hits = {}
+        self.num_nodes = 100
         return
 
     @property
     def recipe(self):
         """Get the recipe for this bot."""
-        recipe_blocks = []
-        nodelist = list(self.nodes)
-        nodelist.extend(list(self.output_nodes))
-
-        for node in nodelist:
-            name = type(node).__name__
-            ingredient_blocks = [name]
+        recipe = ''
+        for node in [*self.nodes, *self.output_nodes]:
+            nodetype = get_node_type_index(node)
+            ingredient = str(nodetype)
             for input_node in node.input_nodes:
-                ingredient_blocks.append(str(input_node.index))
+                ingredient += ':{}'.format(input_node.index)
 
-            recipe_blocks.append(':'.join(ingredient_blocks))
-        return ','.join(recipe_blocks)
+            if recipe:
+                recipe += ",{}".format(ingredient)
+            else:
+                recipe = ingredient
+
+        return recipe
 
     def to_dict(self):
         """Serialise."""
@@ -63,8 +86,7 @@ class GENBOT2(Bot):
                 self.nodes.append(nodes.NODE_INPUT())
 
         # Now generate random nodes.
-        num_nodes = 100
-        for n in range(num_nodes):
+        for n in range(self.num_nodes):
             # Create a random node.
             node = self.get_random_node_instance()
             node.index = n
@@ -98,18 +120,18 @@ class GENBOT2(Bot):
         recipe_blocks = recipe.split(',')
         for recipe_block in recipe_blocks:
             ingredient_blocks = recipe_block.split(':')
-            classname = ingredient_blocks[0]
-            class_ = getattr(nodes, classname)
+            nodetype = int(ingredient_blocks[0])
+            class_ = NODE_DEFS[nodetype]
             instance = class_()
 
-            if classname != 'NODE_INPUT':
+            if nodetype != 0:  # NODE_INPUT
                 inputs_required = instance.num_inputs
                 assert len(ingredient_blocks) == inputs_required + 1
 
                 for input_number in ingredient_blocks[1:]:
                     instance.add_input_node(self.nodes[int(input_number)])
 
-            if classname == 'NODE_OUTPUT':
+            if nodetype == 1:  # NODE_OUTPUT
                 self.output_nodes.append(instance)
             else:
                 self.nodes.append(instance)
@@ -125,7 +147,13 @@ class GENBOT2(Bot):
                 continue
             mutable_nodes.append(node)
 
-        node = random.choice(mutable_nodes)
+        # Always pick the worst node.
+        bad_nodes = self.get_metadata('bad_nodes')
+        #print("BAD NODE: {}".format(bad_nodes[0]))
+
+        # for index in range(10):
+        index = random.choice(bad_nodes[:20])
+        node = self.nodes[index]  # random.choice(mutable_nodes)
         num_inputs = node.num_inputs
 
         input_numbers = random.sample(range(node.index), num_inputs)
@@ -148,6 +176,11 @@ class GENBOT2(Bot):
         class_ = getattr(nodes, selected_node_name)
         instance = class_()
         return instance
+
+    def setup(self):
+        """Setup bot - called before every game."""
+        self.node_hits = {}
+        return
 
     def do_turn(self, game_obj):
         """Do one turn."""
@@ -190,5 +223,78 @@ class GENBOT2(Bot):
         sorted_moves = sorted(dsort, key=dsort.__getitem__, reverse=True)
         selected_move = int(sorted_moves[0])
 
+        # Trace output node back
+        self.back_propagation(selected_move)
+
         return selected_move
         # END OF BRAIN ENGAGEMENT
+
+    def back_propagation(self, move):
+        """Trace output node back to input and flag the active nodes."""
+        q = deque()
+        q.append(self.output_nodes[move])
+
+        while q:
+            node = q.popleft()
+            self.node_hits.setdefault(node.index, 0)
+            self.node_hits[node.index] += 1
+            if node.input_nodes:
+                q.extend(node.input_nodes)
+        return
+
+    def process_game_result(self, result):
+        """
+        Process the result of a single game.
+
+        Note that this bot instance will not accumulate any state from other
+        games. Use it to update the state, and then process the state data
+        from all games in process_batch_result().
+
+        :param result: GameResult object.
+        """
+        return
+
+    def process_batch_result(self, score, score_other, clones):
+        """
+        Process the result of a batch.
+
+        Each game creates a new clone, and each clone holds the data from
+        process_game_result(). This function is called at the end of the
+        batch to allow processing of the data from all of the games,
+        represented by the list of clones.
+
+        Note that the bot instance on which process_batch_result() is called
+        knows nothing about the previous games, and must use the clones to
+        process the data collected during games.
+
+        :param score: My average score.
+        :param score_other: The other bot's average score.
+        :param clones: List of bot clones, each containing data.
+
+        """
+        node_hits_total = {}
+        for clone in clones:
+            for k, v in clone.node_hits.items():
+                node_hits_total.setdefault(k, 0)
+                if clone.score < 0:  # LOSS
+                    node_hits_total[k] -= v
+                else:  # WIN
+                    node_hits_total[k] += v
+
+        # TODO: this needs work - it performs worse than genbot2 :(
+
+        # prioritise nodes that weren't touched.
+        # for node_index in range(27, self.num_nodes):
+        #     node_hits_total.setdefault(node_index, 0)
+
+        bad_node_list = sorted(node_hits_total,
+                               key=node_hits_total.__getitem__)
+
+        # Exclude input nodes
+        # TODO: obviously it would be better to exclude these earlier!
+        new_node_list = [x for x in bad_node_list if x >= 27]
+
+        # print("BAD NODE: {} score {}".format(
+        #     new_node_list[0], node_hits_total[new_node_list[0]]))
+        self.set_metadata('bad_nodes', new_node_list)
+        return
