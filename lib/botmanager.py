@@ -5,11 +5,12 @@ import importlib
 import traceback
 
 from lib.globals import get_config
+from lib.support.botdb import BotDB
 
 # Bots may store data in BOT_TEMP_PATH/<botname>/.
 # This directory will be created by this module if necessary, the first time
 # it is requested by the bot.
-BOT_TEMP_PATH = 'tempdata'
+BOT_TEMP_PATH = "tempdata"
 
 
 class BotManager:
@@ -27,13 +28,13 @@ class BotManager:
     def get_bot_class(self, module_name):
         """Get the class name for the bot."""
         config = get_config()
-        full_module_path = "games.{0}.bots.{1}.{1}".format(config.game,
-                                                           module_name)
+        full_module_path = "games.{0}.bots.{1}.{1}".format(config.game, module_name)
         try:
             module = importlib.import_module(full_module_path)
         except ImportError as e:
-            self.context.log.critical("Failed to import bot module '{}': {}".
-                                      format(full_module_path, e))
+            self.context.log.critical(
+                "Failed to import bot module '{}': {}".format(full_module_path, e)
+            )
             self.context.log.critical(traceback.format_exc())
             return
 
@@ -62,11 +63,23 @@ class BotManager:
             bot_obj = self.create_bot(bot_name)
             if not bot_obj:
                 self.context.log.critical(
-                    "Error instantiating bot '{}'".format(bot_name))
+                    "Error instantiating bot '{}'".format(bot_name)
+                )
                 return
 
             bot_obj.name = bot_name
-            bot_obj.create()
+
+            if bot_obj.genetic and config.bot_id:
+                bot_data = BotDB().load_bot(config.bot_id)
+                if bot_data:
+                    bot_obj.from_dict(bot_data.get("bot", {}))
+                    self.context.log.info(
+                        "Loaded bot: {} :: {}".format(bot_name, config.bot_id)
+                    )
+                else:
+                    bot_obj.create()
+            else:
+                bot_obj.create()
             bots.append(bot_obj)
 
         return bots
