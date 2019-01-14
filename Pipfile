@@ -8,6 +8,7 @@ verify_ssl = true
 [packages]
 black = "*"
 rainbow-logging-handler = "*"
+pymongo = "*"
 
 [requires]
 python_version = "3.7"

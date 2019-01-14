@@ -68,6 +68,7 @@ class GameConfig:
         self.num_samples = 1
         self.keep_samples = 1
         self.use_top_bots = False
+        self.bot_id = None
 
         args = self.define_args()
         self.parse_args(args)
@@ -121,13 +122,16 @@ class GameConfig:
         parser.add_argument(
             "--top",
             action="store_true",
-            help="Start with the top bots for this bot type. " "(Requires --genetic)",
+            help="Start with the top bots for this bot type. (Requires --genetic)",
         )
         parser.add_argument("--custom", help="Custom argument (passed to bot)")
         parser.add_argument(
             "--loggames",
             action="store_true",
-            help="Also log individual games (may require a " "lot of disk space!)",
+            help="Also log individual games (may require a lot of disk space!)",
+        )
+        parser.add_argument(
+            "--botid", action="store", help="Play against this bot id (genetic)"
         )
 
         args = parser.parse_args()
@@ -193,6 +197,9 @@ class GameConfig:
 
                 if args.top:
                     self.use_top_bots = True
+
+                if args.botid:
+                    self.bot_id = args.botid
         return
 
     def init_logging(self):

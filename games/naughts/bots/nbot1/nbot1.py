@@ -18,7 +18,7 @@ class NBOT1(Bot):
         self.genetic = True
         self.input_nodes = []
         self.layers = []
-        self.nodes_per_layer = 9 * 2
+        self.nodes_per_layer = 50
         return
 
     @property
@@ -48,7 +48,7 @@ class NBOT1(Bot):
         self.input_nodes = []
         self.layers = []
 
-        for _ in range(self.nodes_per_layer):
+        for _ in range(9 * 2):
             self.input_nodes.append(InputNeuron())
 
         prev_layer_nodes = self.input_nodes
@@ -69,11 +69,10 @@ class NBOT1(Bot):
     def create_from_recipe(self, recipe):
         """Create bot from recipe."""
         d = json.loads(recipe)
-        self.nodes_per_layer = d.get("nodes", 9)
         self.input_nodes = []
         self.layers = []
 
-        for _ in range(self.nodes_per_layer):
+        for _ in range(9 * 2):
             self.input_nodes.append(InputNeuron())
 
         prev_layer_nodes = self.input_nodes
@@ -107,17 +106,15 @@ class NBOT1(Bot):
         # Populate input nodes with the current board state.
         for p in range(9):
             c = current_board.getat(p)
-            v = 0
+            v1 = 0
+            v2 = 0
             if c == self.identity:
-                v = 1
-            self.input_nodes[p].output = v
+                v1 = 1.0
+            elif c == self.other_identity:
+                v2 = 1.0
 
-        for p in range(9):
-            c = current_board.getat(p)
-            v = 0
-            if c == self.other_identity:
-                v = 1
-            self.input_nodes[p + 9].output = v
+            self.input_nodes[p].output = v1
+            self.input_nodes[p + 9].output = v2
 
         self.log_trace("Input nodes are populated")
 

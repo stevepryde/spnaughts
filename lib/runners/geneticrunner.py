@@ -7,8 +7,11 @@ import time
 
 from lib.runners.gamerunnerbase import GameRunnerBase
 from lib.runners.genetic.processor import Processor, ProcessorMP
+from lib.support.botdb import BotDB
 
 MAX_SCORE = 7.0
+
+db = BotDB()
 
 
 class GeneticRunner(GameRunnerBase):
@@ -97,7 +100,8 @@ class GeneticRunner(GameRunnerBase):
             selected_recipes = []
             for sample in selected_samples:
                 # Check if this is one of the top for this bot.
-                self.config.top_bots.check(self.bots[self.genetic_index].name, sample)
+                bot_name = self.bots[self.genetic_index].name
+                self.config.top_bots.check(bot_name, sample)
 
                 score = sample.score
                 if score > score_threshold:
@@ -106,18 +110,22 @@ class GeneticRunner(GameRunnerBase):
                 selected_scores.append("{:.3f}".format(score))
                 selected_recipes.append("[{:.3f}]: '{}'".format(score, sample.recipe))
 
+                # Add to DB.
+                bot_id = db.insert_bot(bot_name, sample.to_dict(), score)
+                self.log.info("SCORE {} :: {}".format(score, bot_id))
+
             self.log.info(
                 "Generation {} highest scores: [{}]".format(
                     gen, ", ".join(selected_scores)
                 )
             )
 
-            # Write winning recipes to a file.
-            with self.open_unique_file(
-                prefix="winning_recipes_GEN{:04d}".format(gen)
-            ) as f:
-                bot_list = [x.to_dict() for x in selected_samples]
-                json.dump(bot_list, f)
+            # # Write winning recipes to a file.
+            # with self.open_unique_file(
+            #     prefix="winning_recipes_GEN{:04d}".format(gen)
+            # ) as f:
+            #     bot_list = [x.to_dict() for x in selected_samples]
+            #     json.dump(bot_list, f)
 
         end_time = time.monotonic()
         duration = end_time - start_time
