@@ -13,10 +13,10 @@ wins against randombot compared to other bots that likewise cannot lose.
 import random
 
 
-from games.naughts.bots.bot_base import Bot
+from games.naughts.bots.bot_base import NaughtsBot
 
 
-class MINIMAXBOT(Bot):
+class MINIMAXBOT(NaughtsBot):
     """Bot that implements the Minimax algorithm with A-B optimization."""
 
     def do_turn(self, game_obj):
@@ -25,14 +25,7 @@ class MINIMAXBOT(Bot):
         moves = self.get_possible_moves(current_board)
 
         # First, win the game if we can.
-        straight_sequences = ['012',
-                              '345',
-                              '678',
-                              '036',
-                              '147',
-                              '258',
-                              '048',
-                              '246']
+        straight_sequences = ["012", "345", "678", "036", "147", "258", "048", "246"]
 
         for seq in straight_sequences:
             (ours, theirs, blanks) = self.get_sequence_info(current_board, seq)
@@ -48,8 +41,7 @@ class MINIMAXBOT(Bot):
                 return int(blanks[0])
 
         # If this is the first move...
-        (ours, theirs, blanks) = self.get_sequence_info(current_board,
-                                                        '012345678')
+        (ours, theirs, blanks) = self.get_sequence_info(current_board, "012345678")
         if not ours:
             # If we're the second player:
             if theirs:
@@ -113,8 +105,9 @@ class MINIMAXBOT(Bot):
             for move in moves:
                 test_board = node_board.copy()
                 test_board.setat(int(move), turn)
-                v = max(v, self.alphabeta(test_board, self.get_opponent(turn),
-                                          alpha, beta, depth + 1))
+                v = max(
+                    v, self.alphabeta(test_board, self.get_opponent(turn), alpha, beta, depth + 1)
+                )
                 alpha = max(alpha, v)
                 if beta <= alpha:
                     break
@@ -125,8 +118,7 @@ class MINIMAXBOT(Bot):
         for move in moves:
             test_board = node_board.copy()
             test_board.setat(int(move), turn)
-            v = min(v, self.alphabeta(test_board, self.get_opponent(turn),
-                                      alpha, beta, depth + 1))
+            v = min(v, self.alphabeta(test_board, self.get_opponent(turn), alpha, beta, depth + 1))
             beta = min(beta, v)
             if beta <= alpha:
                 break

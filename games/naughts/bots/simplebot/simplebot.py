@@ -7,10 +7,10 @@ Might be useful for training AI bots.
 """
 
 
-from games.naughts.bots.bot_base import Bot
+from games.naughts.bots.bot_base import NaughtsBot
 
 
-class SIMPLEBOT(Bot):
+class SIMPLEBOT(NaughtsBot):
     """Simple bot that just follows a pre-defined list of moves."""
 
     def do_turn(self, game_obj):
@@ -19,14 +19,7 @@ class SIMPLEBOT(Bot):
         moves = self.get_possible_moves(current_board)
 
         # First, win the game if we can.
-        straight_sequences = ['012',
-                              '345',
-                              '678',
-                              '036',
-                              '147',
-                              '258',
-                              '048',
-                              '246']
+        straight_sequences = ["012", "345", "678", "036", "147", "258", "048", "246"]
 
         for seq in straight_sequences:
             (ours, theirs, blanks) = self.get_sequence_info(current_board, seq)
@@ -42,8 +35,7 @@ class SIMPLEBOT(Bot):
                 return int(blanks[0])
 
         # If this is the first move...
-        (ours, theirs, blanks) = self.get_sequence_info(current_board,
-                                                        '012345678')
+        (ours, theirs, blanks) = self.get_sequence_info(current_board, "012345678")
         if not ours:
             # If we're the second player:
             if theirs:
@@ -55,7 +47,7 @@ class SIMPLEBOT(Bot):
 
         # Otherwise pick the first move from a series of preferred moves.
         self.log_debug("Fall back to next move in preferred list")
-        preferred_moves_str = '402681357'
+        preferred_moves_str = "402681357"
         preferred_moves = list(preferred_moves_str)
         for move in preferred_moves:
             if int(move) in moves:

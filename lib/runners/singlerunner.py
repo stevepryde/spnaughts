@@ -10,13 +10,13 @@ from lib.runners.gamerunnerbase import GameRunnerBase
 class SingleRunner(GameRunnerBase):
     """Game Runner for a single game."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Create a new SingleRunner object."""
         super().__init__()
         self.enable_console_logging()
         return
 
-    def run(self):
+    def run(self) -> None:
         """Run a single game."""
         bots = self.bot_manager.create_bots()
         class_ = self.config.get_game_class()

@@ -5,7 +5,7 @@ import os
 import random
 
 
-from games.naughts.bots.bot_base import Bot
+from games.naughts.bots.bot_base import NaughtsBot
 from games.naughts.bots.genbot3 import nodes
 
 
@@ -18,7 +18,7 @@ NODES = [
     nodes.NODE_XOR,
     nodes.NODE_NAND,
     nodes.NODE_NOR,
-    nodes.NODE_XNOR
+    nodes.NODE_XNOR,
 ]
 
 NODE_DEFS = {k: v for k, v in enumerate(NODES)}
@@ -29,7 +29,7 @@ def get_node_type_index(node):
     return NODES.index(node.__class__)
 
 
-class GENBOT3(Bot):
+class GENBOT3(NaughtsBot):
     """Genbot3 - as per genbot2 but with smart mutation."""
 
     def __init__(self, *args, **kwargs):
@@ -45,12 +45,12 @@ class GENBOT3(Bot):
     @property
     def recipe(self):
         """Get the recipe for this bot."""
-        recipe = ''
+        recipe = ""
         for node in [*self.nodes, *self.output_nodes]:
             nodetype = get_node_type_index(node)
             ingredient = str(nodetype)
             for input_node in node.input_nodes:
-                ingredient += ':{}'.format(input_node.index)
+                ingredient += ":{}".format(input_node.index)
 
             if recipe:
                 recipe += ",{}".format(ingredient)
@@ -61,13 +61,13 @@ class GENBOT3(Bot):
 
     def to_dict(self):
         """Serialise."""
-        self.set_data('recipe', self.recipe)
+        self.set_data("recipe", self.recipe)
         return super().to_dict()
 
     def from_dict(self, data_dict):
         """Load data and metadata from dict."""
         super().from_dict(data_dict)
-        self.create_from_recipe(self.get_data('recipe'))
+        self.create_from_recipe(self.get_data("recipe"))
         return
 
     def create(self):
@@ -75,7 +75,7 @@ class GENBOT3(Bot):
 
         Create new brain consisting of random nodes.
         """
-        self.log_trace('Creating brain')
+        self.log_trace("Creating brain")
 
         self.nodes = []
         self.output_nodes = []
@@ -92,8 +92,7 @@ class GENBOT3(Bot):
             node.index = n
 
             # Connect up a random sample of input nodes.
-            node.input_nodes = random.sample(self.nodes,
-                                             node.num_inputs)
+            node.input_nodes = random.sample(self.nodes, node.num_inputs)
 
             # Add this node.
             self.nodes.append(node)
@@ -103,8 +102,7 @@ class GENBOT3(Bot):
             # Create output node.
             node = nodes.NODE_OUTPUT()
 
-            node.input_nodes = random.sample(self.nodes,
-                                             node.num_inputs)
+            node.input_nodes = random.sample(self.nodes, node.num_inputs)
 
             self.output_nodes.append(node)
 
@@ -117,9 +115,9 @@ class GENBOT3(Bot):
         self.output_nodes = []
 
         node_index = 0
-        recipe_blocks = recipe.split(',')
+        recipe_blocks = recipe.split(",")
         for recipe_block in recipe_blocks:
-            ingredient_blocks = recipe_block.split(':')
+            ingredient_blocks = recipe_block.split(":")
             nodetype = int(ingredient_blocks[0])
             class_ = NODE_DEFS[nodetype]
             instance = class_()
@@ -148,8 +146,8 @@ class GENBOT3(Bot):
             mutable_nodes.append(node)
 
         # Always pick the worst node.
-        bad_nodes = self.get_metadata('bad_nodes')
-        #print("BAD NODE: {}".format(bad_nodes[0]))
+        bad_nodes = self.get_metadata("bad_nodes")
+        # print("BAD NODE: {}".format(bad_nodes[0]))
 
         # for index in range(10):
         index = random.choice(bad_nodes[:20])
@@ -164,15 +162,9 @@ class GENBOT3(Bot):
 
     def get_random_node_instance(self):
         """Create new random node instance."""
-        nodepool = ['NOT',
-                    'AND',
-                    'OR',
-                    'XOR',
-                    'NAND',
-                    'NOR',
-                    'XNOR']
+        nodepool = ["NOT", "AND", "OR", "XOR", "NAND", "NOR", "XNOR"]
 
-        selected_node_name = 'NODE_' + random.choice(nodepool)
+        selected_node_name = "NODE_" + random.choice(nodepool)
         class_ = getattr(nodes, selected_node_name)
         instance = class_()
         return instance
@@ -188,11 +180,11 @@ class GENBOT3(Bot):
         moves = self.get_possible_moves(current_board)
 
         # ENGAGE BRAIN
-        self.log.trace('Engaging brain')
+        self.log.trace("Engaging brain")
 
         # Populate input nodes with the current board state.
         for p in range(9):
-            self.nodes[p].set_value(current_board.getat(p) == ' ')
+            self.nodes[p].set_value(current_board.getat(p) == " ")
 
         my_id = self.identity
         for p in range(9):
@@ -201,19 +193,19 @@ class GENBOT3(Bot):
         their_id = self.other_identity
         for p in range(9):
             self.nodes[p + 18].set_value(current_board.getat(p) == their_id)
-        self.log_trace('Input nodes are populated')
+        self.log_trace("Input nodes are populated")
 
         # Now process the brain.
         for index in range(27, len(self.nodes)):
             self.nodes[index].update()
 
-        self.log.trace('Brain has been processed')
+        self.log.trace("Brain has been processed")
 
         # And finally process the output nodes.
         for node in self.output_nodes:
             node.update()
 
-        self.log.trace('Output nodes have been processed')
+        self.log.trace("Output nodes have been processed")
 
         # Now sort moves according to the value of the output nodes.
         dsort = {}
@@ -287,8 +279,7 @@ class GENBOT3(Bot):
         # for node_index in range(27, self.num_nodes):
         #     node_hits_total.setdefault(node_index, 0)
 
-        bad_node_list = sorted(node_hits_total,
-                               key=node_hits_total.__getitem__)
+        bad_node_list = sorted(node_hits_total, key=node_hits_total.__getitem__)
 
         # Exclude input nodes
         # TODO: obviously it would be better to exclude these earlier!
@@ -296,5 +287,6 @@ class GENBOT3(Bot):
 
         # print("BAD NODE: {} score {}".format(
         #     new_node_list[0], node_hits_total[new_node_list[0]]))
-        self.set_metadata('bad_nodes', new_node_list)
+        self.set_metadata("bad_nodes", new_node_list)
         return
+

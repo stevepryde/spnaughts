@@ -2,30 +2,35 @@
 
 
 import copy
+from typing import Any, Dict, List, Optional
 
 from games.naughts import board
+from games.naughts.bots.bot_base import NaughtsBot
 from lib.gamebase import GameBase
+from lib.gamecontext import GameContext
 from lib.gameresult import GameResult, STATUS_LOSS, STATUS_TIE, STATUS_WIN
 
 
 class SingleGame(GameBase):
     """Run a single game of naughts and crosses."""
 
-    identities = ('X', 'O')
+    identities = ("X", "O")
 
-    def __init__(self, parent_context):
+    def __init__(self, parent_context: GameContext) -> None:
         """Create a new SingleGame object."""
         super().__init__(parent_context=parent_context)
-        self.game_board = None
+        self.game_board = None  # type: Optional[board.Board]
         self.current_bot_id = 0
         return
 
-    def is_ended(self):
+    def is_ended(self) -> bool:
         """Return True if the game has ended, otherwise False."""
+        assert self.game_board, "No game board!"
         return self.game_board.is_ended()
 
-    def clone(self):
+    def clone(self) -> "SingleGame":
         """Clone this instance of SingleGame."""
+        assert self.parent_context, "Invalid parent context"
         cloned_game = SingleGame(self.parent_context)
         cloned_game.bots = copy.deepcopy(self.bots)
         cloned_game.game_board = copy.deepcopy(self.game_board)
@@ -33,7 +38,7 @@ class SingleGame(GameBase):
         cloned_game.num_turns = copy.deepcopy(self.num_turns)
         return cloned_game
 
-    def start(self, bots):
+    def start(self, bots: List[NaughtsBot]) -> None:
         """
         Start new game.
 
@@ -43,8 +48,10 @@ class SingleGame(GameBase):
         self.game_board = board.Board()
         return
 
-    def do_turn(self):
+    def do_turn(self) -> List["SingleGame"]:
         """Process one game turn."""
+        assert self.game_board, "No game board!"
+
         if not self.config.silent:
             self.game_board.show()
 
@@ -87,7 +94,7 @@ class SingleGame(GameBase):
 
         return game_clones
 
-    def apply_move(self, move, name, identity):
+    def apply_move(self, move: int, name: str, identity: str) -> None:
         """
         Apply the specified move to the current game.
 
@@ -95,17 +102,17 @@ class SingleGame(GameBase):
         :param name: The name of the bot.
         :param identity: The player identity ('X' or 'O')
         """
+        assert self.game_board, "No game board!"
+
         self.log.info("'{}' chose move ({})".format(name, move))
         self.log.info("")
 
         if move < 0 or move > 8:
-            self.log.error("Bot '{}' performed a move out of range ({})".
-                           format(name, move))
+            self.log.error("Bot '{}' performed a move out of range ({})".format(name, move))
             return
 
-        if self.game_board.getat(move) != ' ':
-            self.log.error("Bot '{}' performed an illegal move ({})".
-                           format(name, move))
+        if self.game_board.getat(move) != " ":
+            self.log.error("Bot '{}' performed an illegal move ({})".format(name, move))
             return
 
         self.game_board.setat(move, identity)
@@ -115,18 +122,19 @@ class SingleGame(GameBase):
             self.game_board.show()
         return
 
-    def get_result(self):
+    def get_result(self) -> Dict[str, Any]:
         """Get information about this game."""
+        assert self.game_board, "No game board!"
+
         if len(self.bots) != 2:
             self.log.error("No bots have been set up - was this game started?")
-            return
+            return {}
 
         outcome = self.game_board.get_game_state()
 
         if outcome == 0:
-            self.log.error("Game ended with invalid state of 0 - was this "
-                           "game finished?")
-            return
+            self.log.error("Game ended with invalid state of 0 - was this " "game finished?")
+            return {}
 
         result_X = GameResult()
         result_O = GameResult()
@@ -144,29 +152,27 @@ class SingleGame(GameBase):
             result_X.status = STATUS_TIE
             result_O.status = STATUS_TIE
         else:
-            self.log.error(
-                "Game ended with invalid state ({})".format(outcome))
-            return
+            self.log.error("Game ended with invalid state ({})".format(outcome))
+            return {}
 
-        result_X.score = self.calculate_score(self.num_turns['X'],
-                                              result_X.status)
-        result_O.score = self.calculate_score(self.num_turns['O'],
-                                              result_O.status)
+        result_X.score = self.calculate_score(self.num_turns["X"], result_X.status)  # type: ignore
+        result_O.score = self.calculate_score(self.num_turns["O"], result_O.status)  # type: ignore
 
-        self.bots[0].score = result_X.score
-        self.bots[1].score = result_O.score
+        self.bots[0].score = result_X.score  # type: ignore
+        self.bots[1].score = result_O.score  # type: ignore
         self.bots[0].process_game_result(result_X)
         self.bots[1].process_game_result(result_O)
 
-        self.log.info("Scores: '{}':{:.2f} , '{}':{:.2f}".
-                      format(self.bots[0].name, result_X.score,
-                             self.bots[1].name, result_O.score))
+        self.log.info(
+            "Scores: '{}':{:.2f} , '{}':{:.2f}".format(
+                self.bots[0].name, result_X.score, self.bots[1].name, result_O.score
+            )
+        )
 
-        game_info = {'result': outcome,
-                     'scores': {'X': result_X.score, 'O': result_O.score}}
+        game_info = {"result": outcome, "scores": {"X": result_X.score, "O": result_O.score}}
         return game_info
 
-    def calculate_score(self, num_turns, status):
+    def calculate_score(self, num_turns: int, status: str) -> float:
         """
         Calculate the 'score' for this game.
 
@@ -179,8 +185,7 @@ class SingleGame(GameBase):
             if status == STATUS_TIE:
                 score = 0
             else:
-                assert status == STATUS_LOSS, \
-                    "Invalid status: {}".format(status)
+                assert status == STATUS_LOSS, "Invalid status: {}".format(status)
                 # Weight losses much more heavily than wins
                 score = -score * 10
         return score

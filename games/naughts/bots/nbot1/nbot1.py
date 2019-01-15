@@ -5,11 +5,11 @@ import os
 import random
 
 
-from games.naughts.bots.bot_base import Bot
+from games.naughts.bots.bot_base import NaughtsBot
 from games.naughts.bots.nbot1.neurons import InputNeuron, Neuron, NeuronLayer
 
 
-class NBOT1(Bot):
+class NBOT1(NaughtsBot):
     """NBOT1 - all moves are determined by the neural net."""
 
     def __init__(self, *args, **kwargs):

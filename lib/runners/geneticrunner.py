@@ -3,8 +3,10 @@
 
 import json
 import time
+from typing import Iterator, List, Optional
 
 
+from lib.gameplayer import GamePlayer
 from lib.runners.gamerunnerbase import GameRunnerBase
 from lib.runners.genetic.processor import Processor, ProcessorMP
 from lib.support.botdb import BotDB
@@ -17,18 +19,18 @@ db = BotDB()
 class GeneticRunner(GameRunnerBase):
     """Genetic Runner. This is the main genetic algorithm."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Create new GeneticRunner."""
         super().__init__()
         self.enable_console_logging()
-        self.bots = []
+        self.bots = []  # type: List[GamePlayer]
         self.genetic_bot_index = 0
         self.genetic_index = 0
-        self.genetic_name = None
+        self.genetic_name = None  # type: Optional[str]
         self.genetic_class = None
         return
 
-    def setup(self):
+    def setup(self) -> None:
         """Set up the genetic runner."""
         self.genetic_index = 0
 
@@ -39,8 +41,7 @@ class GeneticRunner(GameRunnerBase):
         elif self.bots[1].genetic:
             # Both bots are genetic - this is not allowed.
             self.log.critical(
-                "GENETICRUNNER: Both bots are genetic. "
-                "Only first bot will use the genetic algorithm"
+                "GENETICRUNNER: Both bots are genetic. Only first bot will use the genetic algorithm"
             )
             self.genetic_index = 0
 
@@ -50,7 +51,7 @@ class GeneticRunner(GameRunnerBase):
         self.genetic_class = self.bot_manager.get_bot_class(self.genetic_name)
         return
 
-    def run(self):
+    def run(self) -> None:
         """Run the games."""
         start_time = time.monotonic()
 
@@ -62,12 +63,10 @@ class GeneticRunner(GameRunnerBase):
             self.log.critical("GENETICRUNNER: Neither bot is a genetic bot!")
             return
 
-        selected_samples = []
+        selected_samples = []  # type: List[GamePlayer]
         score_threshold = -999  # This will be reset after first round.
 
-        processor = ProcessorMP(
-            context=self, bot=other_bot, genetic_index=self.genetic_index
-        )
+        processor = ProcessorMP(context=self, bot=other_bot, genetic_index=self.genetic_index)
 
         for gen in range(self.config.num_generations):
             self.log.info("--------------------------")
@@ -81,9 +80,7 @@ class GeneticRunner(GameRunnerBase):
 
             genetic_pool = []
             for batch in processor.run(
-                samples=new_samples,
-                generation_index=gen,
-                score_threshold=score_threshold,
+                samples=new_samples, generation_index=gen, score_threshold=score_threshold
             ):
                 # Collect scores.
                 sample = self.bot_manager.create_bot_from_class(self.genetic_class)
@@ -101,7 +98,6 @@ class GeneticRunner(GameRunnerBase):
             for sample in selected_samples:
                 # Check if this is one of the top for this bot.
                 bot_name = self.bots[self.genetic_index].name
-                self.config.top_bots.check(bot_name, sample)
 
                 score = sample.score
                 if score > score_threshold:
@@ -115,9 +111,7 @@ class GeneticRunner(GameRunnerBase):
                 self.log.info("SCORE {} :: {}".format(score, bot_id))
 
             self.log.info(
-                "Generation {} highest scores: [{}]".format(
-                    gen, ", ".join(selected_scores)
-                )
+                "Generation {} highest scores: [{}]".format(gen, ", ".join(selected_scores))
             )
 
             # # Write winning recipes to a file.
@@ -132,7 +126,9 @@ class GeneticRunner(GameRunnerBase):
         self.log.info("Completed in {:.2f} seconds".format(duration))
         return
 
-    def generate_samples(self, input_samples, generation):
+    def generate_samples(
+        self, input_samples: List[GamePlayer], generation: int
+    ) -> Iterator[GamePlayer]:
         """Generate the required number of genetic samples.
 
         This takes some input samples and uses them to generate a range of
@@ -152,9 +148,7 @@ class GeneticRunner(GameRunnerBase):
                 bot_obj = self.bot_manager.create_bot_from_class(self.genetic_class)
 
                 if not bot_obj:
-                    self.log.critical(
-                        "Error instantiating bot '{}'".format(bot_obj.genetic_name)
-                    )
+                    self.log.critical("Error instantiating bot '{}'".format(bot_obj.genetic_name))
                     return
 
                 # Name it using the generation and sample number.
@@ -165,42 +159,25 @@ class GeneticRunner(GameRunnerBase):
                 yield bot_obj
         return
 
-    def generate_original_samples(self, generation):
+    def generate_original_samples(self, generation: int) -> Iterator[GamePlayer]:
         """Generate samples from scratch."""
         # Start from scratch, just create random bots.
-        # NOTE: if --top is specified, create bots from the top recipes.
-        top_index = 0
-        botname = self.bots[self.genetic_index].name
-        top_data = None
-        if self.config.use_top_bots:
-            top_data = self.config.top_bots.get_top_bot_data(botname)
         for s in range(1, self.config.num_samples + 1):
             bot_obj = self.bot_manager.create_bot_from_class(self.genetic_class)
 
             if not bot_obj:
-                self.log.critical(
-                    "Error instantiating bot '{}'".format(self.genetic_name)
-                )
+                self.log.critical("Error instantiating bot '{}'".format(self.genetic_name))
                 return
 
             # Name it using the generation and sample number.
             # This is generation 0.
             bot_obj.name = "{}-{}-{}".format(self.genetic_name, generation, s)
-
-            if self.config.use_top_bots and top_data:
-                if top_index >= len(top_data):
-                    # Out of range: Just repeat the first one.
-                    bot_obj.from_dict(top_data[0])
-                else:
-                    bot_obj.from_dict(top_data[top_index])
-                    top_index += 1
-            else:
-                bot_obj.create()
+            bot_obj.create()
 
             yield bot_obj
         return
 
-    def select_samples(self, sorted_pool):
+    def select_samples(self, sorted_pool: List[GamePlayer]) -> List[GamePlayer]:
         """Select samples from the given pool."""
         # TODO: allow custom selector, to test various selection criteria.
 

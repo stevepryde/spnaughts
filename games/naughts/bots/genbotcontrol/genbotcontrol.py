@@ -9,10 +9,10 @@ subject to compare against genbot1.
 import random
 
 
-from games.naughts.bots.bot_base import Bot
+from games.naughts.bots.bot_base import NaughtsBot
 
 
-class GENBOTCONTROL(Bot):
+class GENBOTCONTROL(NaughtsBot):
     """
     Control bot for genbot1.
 
@@ -32,14 +32,7 @@ class GENBOTCONTROL(Bot):
         moves = self.get_possible_moves(current_board)
 
         # First, win the game if we can.
-        straight_sequences = ['012',
-                              '345',
-                              '678',
-                              '036',
-                              '147',
-                              '258',
-                              '048',
-                              '246']
+        straight_sequences = ["012", "345", "678", "036", "147", "258", "048", "246"]
 
         for seq in straight_sequences:
             (ours, theirs, blanks) = self.get_sequence_info(current_board, seq)
@@ -55,8 +48,7 @@ class GENBOTCONTROL(Bot):
                 return int(blanks[0])
 
         # If this is the first move...
-        (ours, theirs, blanks) = self.get_sequence_info(current_board,
-                                                        '012345678')
+        (ours, theirs, blanks) = self.get_sequence_info(current_board, "012345678")
         if not ours:
             # If we're the second player:
             if theirs:

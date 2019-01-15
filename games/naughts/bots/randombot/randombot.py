@@ -8,10 +8,10 @@ It is also very useful for training and testing AI bots.
 import random
 
 
-from games.naughts.bots.bot_base import Bot
+from games.naughts.bots.bot_base import NaughtsBot
 
 
-class RANDOMBOT(Bot):
+class RANDOMBOT(NaughtsBot):
     """Do random move from possible moves only."""
 
     def do_turn(self, game_obj):

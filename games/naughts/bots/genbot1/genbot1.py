@@ -69,11 +69,11 @@ currently.
 import random
 
 
-from games.naughts.bots.bot_base import Bot
+from games.naughts.bots.bot_base import NaughtsBot
 from games.naughts.bots.genbot1 import nodes
 
 
-class GENBOT1(Bot):
+class GENBOT1(NaughtsBot):
     """The first genetic bot attempted."""
 
     def __init__(self, *args, **kwargs):
@@ -97,19 +97,19 @@ class GENBOT1(Bot):
             for input_node in node.input_nodes:
                 ingredient_blocks.append(str(input_node.index))
 
-            recipe_blocks.append(':'.join(ingredient_blocks))
+            recipe_blocks.append(":".join(ingredient_blocks))
 
-        return ','.join(recipe_blocks)
+        return ",".join(recipe_blocks)
 
     def to_dict(self):
         """Serialise."""
-        self.set_data('recipe', self.recipe)
+        self.set_data("recipe", self.recipe)
         return super().to_dict()
 
     def from_dict(self, data_dict):
         """Load data and metadata from dict."""
         super().from_dict(data_dict)
-        self.create_from_recipe(self.get_data('recipe'))
+        self.create_from_recipe(self.get_data("recipe"))
         return
 
     def create(self):
@@ -117,7 +117,7 @@ class GENBOT1(Bot):
 
         Create new brain consisting of random nodes.
         """
-        self.log_trace('Creating brain')
+        self.log_trace("Creating brain")
 
         self.nodes = []
         self.output_nodes = []
@@ -135,8 +135,7 @@ class GENBOT1(Bot):
             node.index = n
 
             # Connect up a random sample of input nodes.
-            node.input_nodes = random.sample(self.nodes,
-                                             node.num_inputs)
+            node.input_nodes = random.sample(self.nodes, node.num_inputs)
 
             # Add this node.
             self.nodes.append(node)
@@ -146,8 +145,7 @@ class GENBOT1(Bot):
             # Create output node.
             node = nodes.NODE_OUTPUT()
 
-            node.input_nodes = random.sample(self.nodes,
-                                             node.num_inputs)
+            node.input_nodes = random.sample(self.nodes, node.num_inputs)
 
             self.output_nodes.append(node)
 
@@ -160,21 +158,21 @@ class GENBOT1(Bot):
         self.output_nodes = []
 
         node_index = 0
-        recipe_blocks = recipe.split(',')
+        recipe_blocks = recipe.split(",")
         for recipe_block in recipe_blocks:
-            ingredient_blocks = recipe_block.split(':')
+            ingredient_blocks = recipe_block.split(":")
             classname = ingredient_blocks[0]
             class_ = getattr(nodes, classname)
             instance = class_()
 
-            if classname != 'NODE_INPUT':
+            if classname != "NODE_INPUT":
                 inputs_required = instance.num_inputs
                 assert len(ingredient_blocks) == inputs_required + 1
 
                 for input_number in ingredient_blocks[1:]:
                     instance.add_input_node(self.nodes[int(input_number)])
 
-            if classname == 'NODE_OUTPUT':
+            if classname == "NODE_OUTPUT":
                 self.output_nodes.append(instance)
             else:
                 self.nodes.append(instance)
@@ -201,15 +199,9 @@ class GENBOT1(Bot):
 
     def get_random_node_instance(self):
         """Create random node instance."""
-        nodepool = ['NOT',
-                    'AND',
-                    'OR',
-                    'XOR',
-                    'NAND',
-                    'NOR',
-                    'XNOR']
+        nodepool = ["NOT", "AND", "OR", "XOR", "NAND", "NOR", "XNOR"]
 
-        selected_node_name = 'NODE_' + random.choice(nodepool)
+        selected_node_name = "NODE_" + random.choice(nodepool)
         class_ = getattr(nodes, selected_node_name)
         instance = class_()
         return instance
@@ -220,14 +212,7 @@ class GENBOT1(Bot):
         moves = self.get_possible_moves(current_board)
 
         # First, win the game if we can.
-        straight_sequences = ['012',
-                              '345',
-                              '678',
-                              '036',
-                              '147',
-                              '258',
-                              '048',
-                              '246']
+        straight_sequences = ["012", "345", "678", "036", "147", "258", "048", "246"]
 
         for seq in straight_sequences:
             (ours, theirs, blanks) = self.get_sequence_info(current_board, seq)
@@ -243,8 +228,7 @@ class GENBOT1(Bot):
                 return int(blanks[0])
 
         # If this is the first move...
-        (ours, theirs, blanks) = self.get_sequence_info(current_board,
-                                                        '012345678')
+        (ours, theirs, blanks) = self.get_sequence_info(current_board, "012345678")
         if not ours:
             # If we're the second player:
             if theirs:
@@ -255,11 +239,11 @@ class GENBOT1(Bot):
                 return 0
 
         # ENGAGE BRAIN
-        self.log_trace('Engaging brain')
+        self.log_trace("Engaging brain")
 
         # Populate input nodes with the current board state.
         for p in range(9):
-            self.nodes[p].set_value(current_board.getat(p) == ' ')
+            self.nodes[p].set_value(current_board.getat(p) == " ")
 
         my_id = self.identity
         for p in range(9):
@@ -268,19 +252,19 @@ class GENBOT1(Bot):
         their_id = self.other_identity
         for p in range(9):
             self.nodes[p + 18].set_value(current_board.getat(p) == their_id)
-        self.log_trace('Input nodes are populated')
+        self.log_trace("Input nodes are populated")
 
         # Now process the brain.
         for index in range(27, len(self.nodes)):
             self.nodes[index].update()
 
-        self.log_trace('Brain has been processed')
+        self.log_trace("Brain has been processed")
 
         # And finally process the output nodes.
         for node in self.output_nodes:
             node.update()
 
-        self.log_trace('Output nodes have been processed')
+        self.log_trace("Output nodes have been processed")
 
         # Now sort moves according to the value of the output nodes.
         dsort = {}

@@ -2,8 +2,11 @@
 
 import multiprocessing
 import time
+from typing import Dict, Iterator, List
 
 from lib.batch import Batch
+from lib.gamecontext import GameContext
+from lib.gameplayer import GamePlayer
 from lib.runners.genetic.batchworker import BatchWorker
 from lib.globals import timer
 
@@ -11,14 +14,16 @@ from lib.globals import timer
 class Processor:
     """Batch processor."""
 
-    def __init__(self, context, bot, genetic_index):
+    def __init__(self, context: GameContext, bot: GamePlayer, genetic_index: int):
         """Create a new Processor object."""
         self.context = context
         self.bot = bot
         self.genetic_index = genetic_index
         return
 
-    def run(self, samples, generation_index, score_threshold):
+    def run(
+        self, samples: List[GamePlayer], generation_index: int, score_threshold: float
+    ) -> Iterator[Batch]:
         """
         Process the specified samples.
 
@@ -64,7 +69,7 @@ class Processor:
 class ProcessorMP(Processor):
     """Multi-process processor."""
 
-    def __init__(self, context, bot, genetic_index):
+    def __init__(self, context: GameContext, bot: GamePlayer, genetic_index: int) -> None:
         """Create ProcessorMP object."""
         super().__init__(context, bot, genetic_index)
 
@@ -75,7 +80,9 @@ class ProcessorMP(Processor):
         self.context.log.info("Using {} threads...".format(self.num_workers))
         return
 
-    def run(self, samples, generation_index, score_threshold):
+    def run(
+        self, samples: List[GamePlayer], generation_index: int, score_threshold: float
+    ) -> Iterator[Batch]:
         """
         Process the specified samples.
 
@@ -85,8 +92,8 @@ class ProcessorMP(Processor):
 
         # Set up the batch queue and worker threads.
         workers = []
-        worker_inputs = {}
-        q_out = multiprocessing.Queue()
+        worker_inputs = {}  # type: Dict[int, List[Batch]]
+        q_out = multiprocessing.Queue()  # type: multiprocessing.Queue[Batch]
 
         for i in range(self.num_workers):
             worker_inputs[i] = []

@@ -2,12 +2,17 @@
 
 import multiprocessing
 import time
+from typing import List
+
+from lib.batch import Batch
 
 
 class BatchWorker(multiprocessing.Process):
     """Worker class for a single 'thread'."""
 
-    def __init__(self, input_batches, q_out, score_threshold):
+    def __init__(
+        self, input_batches: List[Batch], q_out: multiprocessing.Queue, score_threshold: float
+    ) -> None:
         """
         Create new BatchWorker object.
 
@@ -18,12 +23,12 @@ class BatchWorker(multiprocessing.Process):
         super().__init__()
 
         self.batches = input_batches
-        self.outputs = []
+        self.outputs = []  # type: List[Batch]
         self.q_out = q_out
         self.score_threshold = score_threshold
         return
 
-    def run(self):
+    def run(self) -> None:
         """Run batches."""
         try:
             for batch in self.batches:
