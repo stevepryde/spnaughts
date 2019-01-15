@@ -1,14 +1,16 @@
 """Game config object."""
 
+from typing import Callable, Type
+
 import argparse
 import importlib
 import os
 import sys
 import traceback
 
-
+from lib.gamebase import GameBase
+from lib.gamecontext import GameContext
 from lib.globals import log_critical
-from lib.support.topbots import TopBots
 
 
 # All system logs go here.
@@ -17,13 +19,13 @@ DATA_BASE_PATH = "data"
 SUPPORTED_GAMES = ["naughts"]
 
 
-def quit_game(message="Exiting..."):
+def quit_game(message: str = "Exiting...") -> None:
     """Quit the game, displaying a message."""
     print(message)
     sys.exit(1)
 
 
-def check_int1plus(value):
+def check_int1plus(value: str) -> int:
     """Validate - int greater than one."""
     try:
         ivalue = int(value)
@@ -36,7 +38,7 @@ def check_int1plus(value):
     return ivalue
 
 
-def check_int0plus(value):
+def check_int0plus(value: str) -> int:
     """Validate - int greater than zero."""
     try:
         ivalue = int(value)
@@ -52,7 +54,7 @@ def check_int0plus(value):
 class GameConfig:
     """Game config object."""
 
-    def __init__(self, base_path):
+    def __init__(self, base_path: str) -> None:
         """Create a new GameConfig object."""
         self.base_path = base_path
         self.game = None
@@ -67,18 +69,15 @@ class GameConfig:
         self.num_generations = 1
         self.num_samples = 1
         self.keep_samples = 1
-        self.use_top_bots = False
         self.bot_id = None
 
         args = self.define_args()
         self.parse_args(args)
 
         self.init_logging()
-
-        self.top_bots = TopBots(self.data_path)
         return
 
-    def define_args(self):
+    def define_args(self) -> argparse.Namespace:
         """Define command-line arguments."""
         parser = argparse.ArgumentParser(description="Game Runner")
         parser.add_argument("bot1", help='First bot, e.g. "human"')
@@ -98,16 +97,13 @@ class GameConfig:
             help="Batch mode. Specify the number of games to " "run",
         )
         parser.add_argument(
-            "--magic",
-            action="store_true",
-            help="Use 'magic' batch type (omnibot only!)",
+            "--magic", action="store_true", help="Use 'magic' batch type (omnibot only!)"
         )
         parser.add_argument("--stoponloss", help="Stop if the specified player loses")
         parser.add_argument(
             "--genetic",
             type=check_int1plus,
-            help="Genetic mode. Specify number of generations "
-            "to run (Requires --batch)",
+            help="Genetic mode. Specify number of generations " "to run (Requires --batch)",
         )
         parser.add_argument(
             "--samples",
@@ -119,20 +115,13 @@ class GameConfig:
             type=check_int1plus,
             help='Number of winning samples to "keep" ' "(Requires --genetic)",
         )
-        parser.add_argument(
-            "--top",
-            action="store_true",
-            help="Start with the top bots for this bot type. (Requires --genetic)",
-        )
         parser.add_argument("--custom", help="Custom argument (passed to bot)")
         parser.add_argument(
             "--loggames",
             action="store_true",
             help="Also log individual games (may require a lot of disk space!)",
         )
-        parser.add_argument(
-            "--botid", action="store", help="Play against this bot id (genetic)"
-        )
+        parser.add_argument("--botid", action="store", help="Play against this bot id (genetic)")
 
         args = parser.parse_args()
 
@@ -161,7 +150,7 @@ class GameConfig:
 
         return args
 
-    def parse_args(self, args):
+    def parse_args(self, args: argparse.Namespace) -> None:
         """Parse the command-line arguments."""
         self.game = args.game
 
@@ -195,25 +184,18 @@ class GameConfig:
                 if args.keep:
                     self.keep_samples = int(args.keep)
 
-                if args.top:
-                    self.use_top_bots = True
-
                 if args.botid:
                     self.bot_id = args.botid
         return
 
-    def init_logging(self):
+    def init_logging(self) -> None:
         """Set up logging functionality."""
-        self.log_base_dir = os.path.join(
-            self.base_path, LOG_BASE_PATH, "games", self.game
-        )
+        self.log_base_dir = os.path.join(self.base_path, LOG_BASE_PATH, "games", str(self.game))
 
         try:
             os.makedirs(self.log_base_dir, exist_ok=True)
         except IOError as e:
-            quit_game(
-                "Error creating game log dir '{}': {}".format(self.log_base_dir, str(e))
-            )
+            quit_game("Error creating game log dir '{}': {}".format(self.log_base_dir, str(e)))
 
         self.data_path = os.path.join(self.base_path, DATA_BASE_PATH)
         try:
@@ -222,7 +204,7 @@ class GameConfig:
             quit_game("Error creating data dir '{}': {}".format(self.data_path, str(e)))
         return
 
-    def get_game_class(self):
+    def get_game_class(self) -> Type[GameBase]:
         """Get the class for the SingleGame object for the game type."""
         module_name = "games.{}.singlegame".format(self.game)
         try:
@@ -230,12 +212,12 @@ class GameConfig:
         except ImportError as e:
             log_critical("Failed to import game module '{}': {}".format(module_name, e))
             log_critical(traceback.format_exc())
-            return
+            raise
 
         class_ = getattr(module, "SingleGame")
         return class_
 
-    def get_game_obj(self, parent_context):
+    def get_game_obj(self, parent_context: GameContext) -> GameBase:
         """Get a new instance of the SingleGame object for the game type."""
         class_ = self.get_game_class()
         return class_(parent_context=parent_context)

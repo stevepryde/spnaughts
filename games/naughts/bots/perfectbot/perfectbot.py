@@ -39,13 +39,13 @@ minimaxbot.
 import random
 
 
-from games.naughts.bots.bot_base import Bot
+from games.naughts.bots.bot_base import NaughtsBot
 
 
 DEBUG = False
 
 
-class PERFECTBOT(Bot):
+class PERFECTBOT(NaughtsBot):
     """Experimental bot that follows pre-determined rules."""
 
     def __init__(self):
@@ -71,14 +71,7 @@ class PERFECTBOT(Bot):
         moves = self.get_possible_moves(current_board)
 
         # First, win the game if we can.
-        straight_sequences = ['012',
-                              '345',
-                              '678',
-                              '036',
-                              '147',
-                              '258',
-                              '048',
-                              '246']
+        straight_sequences = ["012", "345", "678", "036", "147", "258", "048", "246"]
 
         for seq in straight_sequences:
             (ours, theirs, blanks) = self.get_sequence_info(current_board, seq)
@@ -94,8 +87,7 @@ class PERFECTBOT(Bot):
                 return int(blanks[0])
 
         # If this is the first move...
-        (ours, theirs, blanks) = self.get_sequence_info(current_board,
-                                                        '012345678')
+        (ours, theirs, blanks) = self.get_sequence_info(current_board, "012345678")
         if not ours:
             # If we're the second player:
             if theirs:
@@ -146,8 +138,9 @@ class PERFECTBOT(Bot):
             #   if (n not in scenarios):
             #     scenarios.append(n)
 
-            self.log_debug("Trying scenario {} in rotation {}".
-                           format(self.scenario, self.scenario_rotation))
+            self.log_debug(
+                "Trying scenario {} in rotation {}".format(self.scenario, self.scenario_rotation)
+            )
 
             for scen in scenarios:
                 for rotation in rotations:
@@ -158,15 +151,15 @@ class PERFECTBOT(Bot):
                         # X_
                         # _O
                         # *_X
-                        if their_identity in list(b.getat_multi('03678')):
+                        if their_identity in list(b.getat_multi("03678")):
                             # They've blocked us.
                             continue
 
-                        if b.getat_multi('37') != '  ':
+                        if b.getat_multi("37") != "  ":
                             # Something's gone wrong with our plan.
                             continue
 
-                        move = b.get_first_empty_space('086')
+                        move = b.get_first_empty_space("086")
                         if move >= 0:
                             # Update the scenario rotation just in case it's
                             # not the original one.
@@ -180,15 +173,15 @@ class PERFECTBOT(Bot):
                         # X_*
                         #  OX
                         #   _
-                        if their_identity in list(b.getat_multi('01258')):
+                        if their_identity in list(b.getat_multi("01258")):
                             # They've blocked us.
                             continue
 
-                        if b.getat_multi('18') != '  ':
+                        if b.getat_multi("18") != "  ":
                             # Something's gone wrong with our plan.
                             continue
 
-                        move = b.get_first_empty_space('052')
+                        move = b.get_first_empty_space("052")
                         if move >= 0:
                             self.scenario = scen
                             self.scenario_rotation = rotation
@@ -199,15 +192,15 @@ class PERFECTBOT(Bot):
                         # X
                         # _O
                         # *X_
-                        if their_identity in list(b.getat_multi('03678')):
+                        if their_identity in list(b.getat_multi("03678")):
                             # They've blocked us.
                             continue
 
-                        if b.getat_multi('38') != '  ':
+                        if b.getat_multi("38") != "  ":
                             # Something's gone wrong with our plan.
                             continue
 
-                        move = b.get_first_empty_space('076')
+                        move = b.get_first_empty_space("076")
                         if move >= 0:
                             self.scenario = scen
                             self.scenario_rotation = rotation
@@ -227,7 +220,7 @@ class PERFECTBOT(Bot):
             # X_
             # _O
             # *_X
-            if b.getat_multi('03678') == "{0}   {0}".format(their_identity):
+            if b.getat_multi("03678") == "{0}   {0}".format(their_identity):
                 self.log_debug("Prevent 2WW scenario 1")
                 return self.get_unrotated_move(3, rotation)
 
@@ -235,7 +228,7 @@ class PERFECTBOT(Bot):
             # X_*
             #  OX
             #   _
-            if b.getat_multi('01258') == "{0}  {0} ".format(their_identity):
+            if b.getat_multi("01258") == "{0}  {0} ".format(their_identity):
                 self.log_debug("Prevent 2WW scenario 2")
                 return self.get_unrotated_move(2, rotation)
 
@@ -243,7 +236,7 @@ class PERFECTBOT(Bot):
             # X
             # _O
             # *X_
-            if b.getat_multi('03678') == "{0}  {0} ".format(their_identity):
+            if b.getat_multi("03678") == "{0}  {0} ".format(their_identity):
                 self.log_debug("Prevent mirrored 2WW scenario 2")
                 return self.get_unrotated_move(6, rotation)
 
@@ -257,7 +250,7 @@ class PERFECTBOT(Bot):
             # _X*
             #  OX
             #   _
-            if b.getat_multi('01258') == " {0} {0} ".format(their_identity):
+            if b.getat_multi("01258") == " {0} {0} ".format(their_identity):
                 self.log_debug("Prevent 2WW scenario 3")
                 return self.get_unrotated_move(2, rotation)
 
@@ -266,10 +259,10 @@ class PERFECTBOT(Bot):
             # X _
             # _X
             # * O
-            if b.getat_multi('02346') == "{0}  {0} ".format(their_identity):
+            if b.getat_multi("02346") == "{0}  {0} ".format(their_identity):
                 self.log_debug("Prevent 2WW scenario 4")
                 # This scenario can go two ways, so cover both.
-                move = b.get_first_empty_space('62')
+                move = b.get_first_empty_space("62")
                 return self.get_unrotated_move(move, rotation)
 
             # Scenario 4 mirrored:
@@ -277,16 +270,16 @@ class PERFECTBOT(Bot):
             # X_*
             #  X
             # _ O
-            if b.getat_multi('01246') == "{0}  {0} ".format(their_identity):
+            if b.getat_multi("01246") == "{0}  {0} ".format(their_identity):
                 self.log_debug("Prevent mirrored 2WW scenario 4")
-                move = b.get_first_empty_space('26')
+                move = b.get_first_empty_space("26")
                 return self.get_unrotated_move(move, rotation)
 
             # TODO: DID I MISS ANY? It should be impossible to win here.
 
         # Otherwise pick the first move from a series of preferred moves.
         self.log_debug("Fall back to next move in preferred list")
-        preferred_moves_str = '402681357'
+        preferred_moves_str = "402681357"
         preferred_moves = list(preferred_moves_str)
         for move in preferred_moves:
             if int(move) in moves:

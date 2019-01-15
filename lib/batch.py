@@ -1,13 +1,15 @@
 """Run a batch of games."""
 
+from typing import Any, Deque, Dict, List
 
 import collections
 import copy
 import random
 import time
 
-
+from lib.gamebase import GameBase
 from lib.gamecontext import GameContext
+from lib.gameplayer import GamePlayer
 from lib.globals import time_this
 
 P1_WINS = 1
@@ -18,7 +20,7 @@ DRAW = 3
 class Batch(GameContext):
     """A Batch will run a batch of single games."""
 
-    def __init__(self, parent_context, bots):
+    def __init__(self, parent_context: GameContext, bots: List[GamePlayer]) -> None:
         """
         Create a new Batch.
 
@@ -33,18 +35,19 @@ class Batch(GameContext):
         # potentially containing state info etc.
         # To allow bots to aggregate and process all of this data, we
         # pass the list of bots to each bot's process_batch_result().
-        self.bot_clones0 = []
-        self.bot_clones1 = []
+        self.bot_clones0 = []  # type: List[GamePlayer]
+        self.bot_clones1 = []  # type: List[GamePlayer]
 
         self.label = ""
-        self.info = {}  # Used by genetic.batchworker.
+        # info is used by genetic.batchworker.
+        self.info = {}  # type: Dict[str, Any]
 
         self.overall_results = {P1_WINS: 0, P2_WINS: 0, DRAW: 0}
         self.num_games_played = 0
-        self.total_score = {}
+        self.total_score = {}  # type: Dict[str, float]
         return
 
-    def run_batch(self):
+    def run_batch(self) -> List[float]:
         """Run this batch and return the average scores."""
         self.start_batch()
 
@@ -56,7 +59,7 @@ class Batch(GameContext):
         average_scores = self.process_batch_result()
         return average_scores
 
-    def start_batch(self):
+    def start_batch(self) -> None:
         """Start this batch."""
         # Run a single batch.
         class_ = self.config.get_game_class()
@@ -71,18 +74,18 @@ class Batch(GameContext):
         # random.seed(1)
         return
 
-    def process_game_result(self, game_num, game_info):
+    def process_game_result(self, game_num: int, game_info: Dict[str, Any]) -> None:
         """Process the result of a single game."""
-        result = game_info['result']
+        result = game_info["result"]
 
         self.num_games_played += 1
         class_ = self.config.get_game_class()
         identities = class_.identities
         for identity in identities:
-            self.total_score[identity] += game_info['scores'][identity]
+            self.total_score[identity] += game_info["scores"][identity]
 
-        bot_name = ''
-        identity_loss = ''
+        bot_name = ""
+        identity_loss = ""
         if result == DRAW:
             self.log.info("Game {}: TIE".format(game_num))
         else:
@@ -96,12 +99,12 @@ class Batch(GameContext):
                 self.log.error("Invalid result received: '{}'".format(result))
                 return
 
-            self.log.info("Game {}: '{}' WINS".
-                          format(game_num, bot_name))
+            self.log.info("Game {}: '{}' WINS".format(game_num, bot_name))
             if self.config.stop_on_loss == identity_loss:
-                self.log.info("Stopping because {0} lost a game and "
-                              "--stoponloss {0} was specified".
-                              format(identity_loss))
+                self.log.info(
+                    "Stopping because {0} lost a game and "
+                    "--stoponloss {0} was specified".format(identity_loss)
+                )
                 return
 
         if result not in self.overall_results:
@@ -111,7 +114,7 @@ class Batch(GameContext):
             self.overall_results[result] += 1
         return
 
-    def process_batch_result(self):
+    def process_batch_result(self) -> List[float]:
         """
         Process the results for this batch.
 
@@ -121,10 +124,8 @@ class Batch(GameContext):
         self.log.info("\nRESULTS:")
         self.log.info("Games Played: {}".format(self.num_games_played))
         self.log.info("")
-        self.log.info("'{}' WINS: {}".format(self.bots[0].name,
-                                             self.overall_results[P1_WINS]))
-        self.log.info("'{}' WINS: {}".format(self.bots[1].name,
-                                             self.overall_results[P2_WINS]))
+        self.log.info("'{}' WINS: {}".format(self.bots[0].name, self.overall_results[P1_WINS]))
+        self.log.info("'{}' WINS: {}".format(self.bots[1].name, self.overall_results[P2_WINS]))
         self.log.info("DRAW/TIE: {}".format(self.overall_results[DRAW]))
         self.log.info("")
 
@@ -134,33 +135,33 @@ class Batch(GameContext):
             identities = class_.identities
             avg_score = []
             for identity in identities:
-                avg_score.append(
-                    float(self.total_score[identity] / self.num_games_played))
+                avg_score.append(float(self.total_score[identity] / self.num_games_played))
 
             self.bots[0].score = avg_score[0]
             self.bots[1].score = avg_score[1]
 
-            self.log.info("\nAverage Scores: '{}':{:.2f} , '{}':{:.2f}".
-                          format(self.bots[0].name, avg_score[0],
-                                 self.bots[1].name, avg_score[1]))
+            self.log.info(
+                "\nAverage Scores: '{}':{:.2f} , '{}':{:.2f}".format(
+                    self.bots[0].name, avg_score[0], self.bots[1].name, avg_score[1]
+                )
+            )
 
-            self.log.info("AVERAGE SCORES:\n'{}':{:.2f}\n'{}':{:.2f}".
-                          format(self.bots[0].name, avg_score[0],
-                                 self.bots[1].name, avg_score[1]))
+            self.log.info(
+                "AVERAGE SCORES:\n'{}':{:.2f}\n'{}':{:.2f}".format(
+                    self.bots[0].name, avg_score[0], self.bots[1].name, avg_score[1]
+                )
+            )
 
-            self.bots[0].process_batch_result(avg_score[0], avg_score[1],
-                                              clones=self.bot_clones0)
-            self.bots[1].process_batch_result(avg_score[1], avg_score[0],
-                                              clones=self.bot_clones1)
+            self.bots[0].process_batch_result(avg_score[0], avg_score[1], clones=self.bot_clones0)
+            self.bots[1].process_batch_result(avg_score[1], avg_score[0], clones=self.bot_clones1)
 
             return avg_score
         return [0, 0]
 
-    def run_normal_batch(self):
+    def run_normal_batch(self) -> None:
         """Run normal batch of games."""
         for game_num in range(1, self.config.batch_size + 1):
-            self.log.info("\n********** Running game {} **********\n".
-                          format(game_num))
+            self.log.info("\n********** Running game {} **********\n".format(game_num))
 
             game_obj = self.config.get_game_obj(parent_context=self)
             if self.config.log_games:
@@ -178,14 +179,14 @@ class Batch(GameContext):
             self.process_game_result(game_num, game_info)
         return
 
-    def run_magic_batch(self):
+    def run_magic_batch(self) -> None:
         """Pseudo-batch that actually runs every possible move combination."""
         game_num = 0
         game_obj_initial = self.config.get_game_obj(parent_context=self)
         bot_list = copy.deepcopy(self.bots)
         game_obj_initial.start(bot_list)
 
-        game_queue = collections.deque()
+        game_queue = collections.deque()  # type: Deque[GameBase]
         game_queue.append(game_obj_initial)
 
         try:
@@ -194,8 +195,9 @@ class Batch(GameContext):
                 new_games = game_obj.do_turn()
 
                 if not new_games:
-                    self.log.error("No cloned games returned from do_turn() "
-                                   "when running magic batch")
+                    self.log.error(
+                        "No cloned games returned from do_turn() " "when running magic batch"
+                    )
                     break
 
                 for new_game_obj in new_games:

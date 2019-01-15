@@ -10,10 +10,10 @@ more details.
 """
 
 
-from games.naughts.bots.bot_base import Bot
+from games.naughts.bots.bot_base import NaughtsBot
 
 
-class OMNIBOT(Bot):
+class OMNIBOT(NaughtsBot):
     """
     Special bot that returns all available moves.
 

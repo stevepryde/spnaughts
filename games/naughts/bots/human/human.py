@@ -6,10 +6,10 @@ Not practical in batch mode or genetic mode.
 """
 
 
-from games.naughts.bots.bot_base import Bot
+from games.naughts.bots.bot_base import NaughtsBot
 
 
-class HUMAN(Bot):
+class HUMAN(NaughtsBot):
     """Bot that gets input from the user."""
 
     def do_turn(self, game_obj):
@@ -17,7 +17,7 @@ class HUMAN(Bot):
         moves = self.get_possible_moves(game_obj)
         moves = [str(x) for x in moves]
 
-        info_str = 'possible moves are [{}]'.format(','.join(moves))
+        info_str = "possible moves are [{}]".format(",".join(moves))
 
         # If there's only one choice, save ourselves some typing.
         if len(moves) == 1:

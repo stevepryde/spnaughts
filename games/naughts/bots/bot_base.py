@@ -8,38 +8,43 @@ Genetic bots can also optionally implement process_batch_result().
 
 
 import os
+from typing import Any, List, Optional, Tuple, TYPE_CHECKING
 
+from games.naughts.board import Board
 from lib.gameplayer import GamePlayer
 from lib.globals import log_debug, log_trace
 
+if TYPE_CHECKING:
+    from games.naughts.singlegame import SingleGame
 
-class Bot(GamePlayer):
-    """Base class for all bots."""
 
-    def create(self):
+class NaughtsBot(GamePlayer):
+    """Base class for all naughts bots."""
+
+    def create(self) -> None:
         """Create bot, with the given config."""
         return
 
     @property
-    def other_identity(self):
+    def other_identity(self) -> str:
         """Get the identity character for the other bot."""
-        if self.identity == 'X':
-            return 'O'
-        return 'X'
+        if self.identity == "X":
+            return "O"
+        return "X"
 
-    def get_temp_path(self):
+    def get_temp_path(self) -> str:
         """Get the temp path for this bot, creating it if necessary."""
         assert self.temppath is not None
         os.makedirs(self.temppath, exist_ok=True)
         return self.temppath
 
-    def set_temp_path_base(self, temppathbase):
+    def set_temp_path_base(self, temppathbase: str) -> None:
         """Set the base temp path."""
         lcname = str(self.__class__.__name__).lower()
         self.temppath = os.path.join(temppathbase, lcname)
         return
 
-    def do_turn(self, game_obj):
+    def do_turn(self, game_obj: "SingleGame") -> Any:
         """
         Handle a single turn.
 
@@ -57,7 +62,7 @@ class Bot(GamePlayer):
     #
     ##########################################################################
 
-    def get_possible_moves(self, current_board):
+    def get_possible_moves(self, current_board: Board) -> List[int]:
         """
         Get all possible moves for the specified board.
 
@@ -66,12 +71,14 @@ class Bot(GamePlayer):
         """
         possible = []
         for pos in range(9):
-            if current_board.getat(pos) == ' ':
+            if current_board.getat(pos) == " ":
                 possible.append(pos)
 
         return possible
 
-    def get_sequence_info(self, board, sequence):
+    def get_sequence_info(
+        self, board: Board, sequence: str
+    ) -> Tuple[List[int], List[int], List[int]]:
         """
         Return info about the given sequence, in the form of 3 lists.
 
@@ -93,14 +100,14 @@ class Bot(GamePlayer):
             val = board.getat(c)
             if val == self.identity:
                 ours.append(c)
-            elif val == ' ':
+            elif val == " ":
                 blanks.append(c)
             else:
                 theirs.append(c)
 
         return (ours, theirs, blanks)
 
-    def get_unrotated_move(self, move, rotations):
+    def get_unrotated_move(self, move: int, rotations: int) -> int:
         """
         Return the correct, unrotated move.
 
@@ -128,7 +135,7 @@ class Bot(GamePlayer):
 
         return move
 
-    def get_opponent(self, me=None):
+    def get_opponent(self, me: Optional[str] = None) -> str:
         """
         Get the identity of the opponent.
 
@@ -139,21 +146,21 @@ class Bot(GamePlayer):
         if not me:
             me = self.identity
 
-        if me == 'X':
-            return 'O'
-        return 'X'
+        if me == "X":
+            return "O"
+        return "X"
 
-    def get_filename(self, basename):
+    def get_filename(self, basename: str) -> str:
         """Get the filename for this bot."""
         assert self.temppath is not None
         return os.path.join(self.temppath, basename)
 
-    def log_debug(self, message):
+    def log_debug(self, message: str) -> None:
         """Write debug log message with bot name."""
         log_debug("[{}]: {}".format(self.name, message))
         return
 
-    def log_trace(self, message):
+    def log_trace(self, message: str) -> None:
         """Write trace log method with bot name."""
         log_trace("[{}]: {}".format(self.name, message))
         return

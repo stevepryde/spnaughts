@@ -2,13 +2,18 @@
 
 import contextlib
 import time
+from typing import Any, Callable, Iterator, TYPE_CHECKING
 
 
 DEFAULT_LOG = None
 GLOBAL_CONFIG = None
 
+if TYPE_CHECKING:
+    from lib.gameconfig import GameConfig
+    from lib.log import LogHandler
 
-def set_global_config(config):
+
+def set_global_config(config: "GameConfig") -> None:
     """Set the global config object."""
     global GLOBAL_CONFIG
     assert GLOBAL_CONFIG is None
@@ -16,12 +21,13 @@ def set_global_config(config):
     return
 
 
-def get_config():
+def get_config() -> "GameConfig":
     """Get the global GameConfig object."""
+    assert GLOBAL_CONFIG, "GameConfig not set up yet!"
     return GLOBAL_CONFIG
 
 
-def set_default_log(log_handler):
+def set_default_log(log_handler: "LogHandler") -> None:
     """Set the global log handler object."""
     global DEFAULT_LOG
     assert DEFAULT_LOG is None
@@ -29,50 +35,50 @@ def set_default_log(log_handler):
     return
 
 
-def log_trace(text):
+def log_trace(text: str) -> None:
     """Write to log at TRACE level."""
     if DEFAULT_LOG:
         DEFAULT_LOG.trace(text)
     return
 
 
-def log_debug(text):
+def log_debug(text: str) -> None:
     """Write to log at DEBUG level."""
     if DEFAULT_LOG:
         DEFAULT_LOG.debug(text)
     return
 
 
-def log_info(text):
+def log_info(text: str) -> None:
     """Write to log at INFO level."""
     if DEFAULT_LOG:
         DEFAULT_LOG.info(text)
     return
 
 
-def log_warning(text):
+def log_warning(text: str) -> None:
     """Write to log at WARNING level."""
     if DEFAULT_LOG:
         DEFAULT_LOG.warning(text)
     return
 
 
-def log_error(text):
+def log_error(text: str) -> None:
     """Write to log at ERROR level."""
     if DEFAULT_LOG:
         DEFAULT_LOG.error(text)
     return
 
 
-def log_critical(text):
+def log_critical(text: str) -> None:
     """Write to log at CRITICAL level."""
     if DEFAULT_LOG:
         DEFAULT_LOG.critical(text)
     return
 
 
-def time_this(func):
-    def inner(*args, **kwargs):
+def time_this(func: Callable) -> Callable:
+    def inner(*args, **kwargs) -> Any:
         start_time = time.monotonic()
         ret = func(*args, **kwargs)
         end_time = time.monotonic()
@@ -84,7 +90,7 @@ def time_this(func):
 
 
 @contextlib.contextmanager
-def timer(label):
+def timer(label: str) -> Iterator[None]:
     start_time = time.monotonic()
     yield
     end_time = time.monotonic()
