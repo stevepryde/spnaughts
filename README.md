@@ -3,6 +3,8 @@
 SP Naughts is a simple naughts and crosses "game" including a collection of
 AI bots.
 
+It is a WIP and about to receive a major overhaul.
+
 ## Run games using game_runner.py:
 
     $ ./game_runner.py -h
@@ -95,6 +97,7 @@ loaded from the particular recipe that has been supplied.
 ## ROBOTS
 
 The interesting 'bots' included are as follows:
+
 - randombot
   Just chooses from the available moves at random. Very useful for training
   or testing other bots (in batch mode or genetic mode).
@@ -136,46 +139,48 @@ The interesting 'bots' included are as follows:
 There are a couple of other bots included as well, that I used for testing.
 See the documentation at the top of each source file for more details.
 
-## LATEST NEWS
-
-As indicated above, the latest additions include genbot2 and omnibot, which
-work together to "train" genbot2 more reliably than any previous method.
-
-I am not aware of any "ideal" settings to use for testing genbot2, but the
-following command line is what I typically use:
-
-    $ ./game_runner.py omnibot genbot2 --batch 0 --genetic 100 --samples 50 --keep 3
-
-This will run the omnibot against genbot2, using the 'magic' batch runner
-(which just means taking advantage of omnibot to follow every possible path),
-for 100 generations. After each generation, the top 3 samples are chosen, and
-50 new samples are generated from each of those (150 in total). The generation
-of a new sample just means taking the old one and modifying several of its
-nodes. The number of nodes modified, as well as the input nodes used for their
-replacements, are all chosen at random.
-
-When running with omnibot, scores should be repeatable, and can be used to
-compare different bots. Losses are weighted 10x more heavily than wins. I have
-seen scores above -10 within 100 generations using the above settings.
-
 ## FUTURE
 
-There is plenty of scope for future improvement.
+This software has gotten more complicated than I'd like. The decision to put
+all major objects inside a GameContext was intended to automatically set up
+subdirectories and logging where appropriate, but it also added complexity.
 
-The primary focus of this experiment is the algorithm implemented in genbot1,
-and also carried further in genbot2.
-This algorithm is original. Perhaps it already exists elsewhere as well. It is
-fairly simple in concept. The algorithm is documented in the header of the
-genbot1 python file.
+The software is due for a design overhaul on the engine side of things.
 
-There are still several aspects that could be tunable in future, including:
-- The number and type of 'mutations' applied to each new sample.
-- The selection metrics.
-- The number of nodes in genbot2.
-- New node types with multiple inputs. Perhaps a random number node, for some
-  variability or indeterminacy?
+First, the setup needs a shuffle. I think at the very top layer should be
+the game object, and the bots themselves, or at least factories of them.
+Currently the game object is instantiated inside the runner or batch, which
+feels weird, and too deep in the guts of what is going on.
 
-If you achieve anything with this software, please let me know. I want to know
-what people do with it :)
+The game object and bots should be created up front, and then be supplied to
+the particular runner, which just executes the game in a generic way.
+
+To do this, there needs to be a separation between the game instance data / state,
+and the game logic. The top level game object could be a game instance factory
+that can dish up new clean game / data instances.
+
+Aside from all of this, the actual batch processing currently touches far too
+much code. I'm hitting performance bottlenecks trying to process batches, so
+in order to improve performance the obvious option is to parallelise things.
+But this requires moving batch processing into other processes and eventually
+even other machines. In order to do that, batches need to be much leaner in
+terms of what info they need passed in, and what they send back.
+
+Then once it goes fully parallel, there is the discussion of how to move batch
+info back and forth between the server and the workers. One option is a queue
+such as rabbitmq. Another is websockets. Some experimentation will be required.
+
+In terms of games, nbot1 is an early neural net approach, which is showing
+some promise but really needs to run for many more generations to reach its
+potential. Thus the performance focus.
+
+Once I have a nice neural net bot that can learn and self-improve, the longer
+term goal is to implement more games. Connect four will be the obvious next
+choice. Ideally the game interface will be adjusted so that the inputs and
+outputs can be more generic, and thus the neural net bot can be made somewhat
+generic too. So long as we have inputs, outputs, and a score (fitness function),
+it should just work. Fingers crossed.
+
+That's all for now.
 
 I hope you enjoy it.
