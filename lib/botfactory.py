@@ -11,7 +11,7 @@ from lib.gameconfig import GameConfig
 from lib.gamecontext import GameContext
 from lib.gamefactory import GameFactory
 from lib.gameplayer import GamePlayer
-from lib.support.botdb import BotDB
+from lib.support.botdb import BotDB, ConnectionFailure
 
 # Bots may store data in BOT_TEMP_PATH/<botname>/.
 # This directory will be created by this module if necessary, the first time
@@ -31,6 +31,7 @@ class BotFactory:
         self.context = context
         self.bot_config = bot_config
         self.bot_names = self.bot_config.get("bot_names", [])
+        self.botdb = self.bot_config.get("botdb", False)
         self.bot_id = self.bot_config.get("bot_id")
         self.game = self.bot_config.get("game", "")
         return
@@ -89,12 +90,17 @@ class BotFactory:
 
             bot_obj.name = bot_name
             loaded = False
-            if bot_obj.genetic and self.bot_id:
-                bot_data = BotDB().load_bot(self.bot_id)
-                if bot_data:
-                    bot_obj.from_dict(bot_data.get("bot", {}))
-                    self.context.log.info("Loaded bot: {} :: {}".format(bot_name, self.bot_id))
-                    loaded = True
+            if bot_obj.genetic and self.bot_id and self.botdb:
+                try:
+                    bot_data = BotDB().load_bot(self.bot_id)
+                    if bot_data:
+                        bot_obj.from_dict(bot_data.get("bot", {}))
+                        self.context.log.info("Loaded bot: {} :: {}".format(bot_name, self.bot_id))
+                        loaded = True
+                    else:
+                        self.context.log.warning("Bot '{}' not found".format(self.bot_id))
+                except ConnectionFailure as e:
+                    raise BotCreateError("Error connecting to MongoDB: {}".format(e)) from e
 
             if not loaded:
                 bot_obj.create(game_info=gameclass.get_game_info())

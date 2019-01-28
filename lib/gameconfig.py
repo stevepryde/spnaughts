@@ -67,6 +67,7 @@ class GameConfig:
         self.num_generations = 1
         self.num_samples = 1
         self.keep_samples = 1
+        self.botdb = False
         self.bot_id = None
         self.bot1 = ""
         self.bot2 = ""
@@ -117,6 +118,9 @@ class GameConfig:
             type=check_int1plus,
             help='Number of winning samples to "keep" ' "(Requires --genetic)",
         )
+        parser.add_argument(
+            "--botdb", action="store_true", help="Enable storing and loading bots with BotDB"
+        )
         parser.add_argument("--botid", action="store", help="Play against this bot id (genetic)")
 
         args = parser.parse_args()
@@ -140,7 +144,6 @@ class GameConfig:
             for req in requires_genetic:
                 if req in args_dict and args_dict[req]:
                     parser.error("Option --{} requires --genetic".format(req))
-
         return args
 
     def parse_args(self, args: argparse.Namespace) -> None:
@@ -149,6 +152,9 @@ class GameConfig:
 
         self.bot1 = args.bot1
         self.bot2 = args.bot2
+
+        if args.botdb:
+            self.botdb = True
 
         if args.batch > 0:
             self.batch_size = int(args.batch)
@@ -167,6 +173,7 @@ class GameConfig:
                     self.keep_samples = int(args.keep)
 
                 if args.botid:
+                    self.botdb = True
                     self.bot_id = args.botid
         return
 
@@ -196,5 +203,10 @@ class GameConfig:
 
     def get_bot_config(self) -> Dict[str, Any]:
         """Get config required for bots."""
-        return {"bot_names": self.bot_names, "bot_id": self.bot_id, "game": self.game}
+        return {
+            "bot_names": self.bot_names,
+            "bot_id": self.bot_id,
+            "game": self.game,
+            "botdb": self.botdb,
+        }
 
