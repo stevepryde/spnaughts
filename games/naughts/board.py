@@ -6,6 +6,8 @@ It consists of 9 characters,
 - = blank space. X and O are represented by exactly those letters (uppercase).
 """
 
+from typing import List
+
 
 class Board:
     """Representation of a naughts and crosses board."""
@@ -135,7 +137,7 @@ class Board:
 
         if state == 2:
             return "O"
-        assert False, "No winner yet!"
+        return ""
 
     ##########################################################
     # HELPER METHODS for use in bots.
@@ -194,3 +196,11 @@ class Board:
             if self.getat(int(pos)) == " ":
                 return int(pos)
         return -1
+
+    def get_possible_moves(self) -> List[int]:
+        """
+        Get all possible moves for the specified board.
+
+        :returns: List of possible moves.
+        """
+        return [x for x in range(9) if self.getat(x) == " "]

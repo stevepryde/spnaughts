@@ -13,20 +13,6 @@ if TYPE_CHECKING:
     from lib.log import LogHandler
 
 
-def set_global_config(config: "GameConfig") -> None:
-    """Set the global config object."""
-    global GLOBAL_CONFIG
-    assert GLOBAL_CONFIG is None
-    GLOBAL_CONFIG = config
-    return
-
-
-def get_config() -> "GameConfig":
-    """Get the global GameConfig object."""
-    assert GLOBAL_CONFIG, "GameConfig not set up yet!"
-    return GLOBAL_CONFIG
-
-
 def set_default_log(log_handler: "LogHandler") -> None:
     """Set the global log handler object."""
     global DEFAULT_LOG

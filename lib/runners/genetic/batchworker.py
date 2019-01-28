@@ -33,10 +33,10 @@ class BatchWorker(multiprocessing.Process):
         try:
             for batch in self.batches:
                 genetic_index = batch.info["index"]
-                avg_scores = batch.run_batch()
-                genetic_score = avg_scores[genetic_index]
+                batch_result = batch.run_batch()
 
-                batch.info["avg_scores"] = avg_scores
+                genetic_identity = batch.identities[genetic_index]
+                genetic_score = batch_result.get_score(genetic_identity)
                 batch.info["genetic_score"] = genetic_score
                 batch.bots[genetic_index].score = genetic_score
                 batch.info["bot_data"] = batch.bots[genetic_index].to_dict()

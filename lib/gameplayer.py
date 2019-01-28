@@ -16,46 +16,42 @@ if TYPE_CHECKING:
 class GamePlayer(GameContext):
     """Object containing player details."""
 
-    def __init__(self, parent_context: GameContext) -> None:
+    def __init__(self) -> None:
         """Create a new GamePlayer object."""
-        super().__init__(parent_context)
-        self._score = None  # type: Optional[float]
+        super().__init__()
         self.identity = ""
-        self.temppath = None  # type: Optional[str]
+        self._score = None  # type: Optional[float]
         self.genetic = False
-        self.metadata = {}  # type: Dict[str, Any]
         self.data = {}  # type: Dict[str, Any]
         self.name = ""
         return
 
     def clone_from(self, other: "GamePlayer") -> None:
         """Clone the data and metadata from another bot."""
-        self.data = copy.deepcopy(other.data)
-        self.metadata = copy.deepcopy(other.metadata)
-        self.score = other.score
+        self.set_state(other.get_state())
+        return
+
+    @property
+    def score(self) -> float:
+        """Get the bot score (only available after the game has finished)."""
+        assert self._score is not None, "Bot score accessed before game end!"
+        return self._score
+
+    @score.setter
+    def score(self, value: float) -> None:
+        """Set the score."""
+        self._score = value
+        return
+
+    def clear_score(self) -> None:
+        """Clear the player score."""
+        self._score = None
         return
 
     @property
     def label(self) -> str:
         """Return the name of this player, as a string."""
         return "{} ({})".format(self.__class__.__name__, self.identity)
-
-    @property
-    def score(self) -> float:
-        """Get the bot's score."""
-        assert self._score is not None, "Score for player '{}' not set".format(self.name)
-        return self._score
-
-    @score.setter
-    def score(self, value: Optional[float]) -> None:
-        """Set the bot's score."""
-        self._score = value
-        return
-
-    def clear_score(self) -> None:
-        """Set the score to None."""
-        self.score = None  # type: ignore
-        return
 
     def set_data(self, key: str, value: Any) -> None:
         """Set the specified data, as given by key and value."""
@@ -66,74 +62,39 @@ class GamePlayer(GameContext):
         """Get the data for this key."""
         return self.data.get(key, default)
 
-    def set_metadata(self, key: str, value: Any) -> None:
-        """Set the specified metadata, as given by key and value."""
-        self.metadata[key] = value
-        return
-
-    def get_metadata(self, key: str, default: Any = None) -> Any:
-        """Get the metadata for this key."""
-        return self.metadata.get(key, default)
-
     def to_dict(self) -> Dict[str, Any]:
-        """Serialise the data and metadata and return dict."""
-        all_data = {"data": self.data, "metadata": self.metadata, "score": self.score}
-        return all_data
+        """Get full bot state. Subclasses should override get_state() instead."""
+        state = self.data
+        state.update(self.get_state())
+        return state
 
-    def from_dict(self, data_dict: Dict[str, Any]) -> None:
-        """Load data and metadata from dict."""
-        self.data = data_dict.get("data", {})
-        self.metadata = data_dict.get("metadata", {})
-        self.score = data_dict.get("score")  # type: ignore
+    def from_dict(self, state: Dict[str, Any]) -> None:
+        """Load state from dict. Subclasses should override set_state() instead."""
+        self.data = copy.deepcopy(state)
+        self.set_state(state)
         return
 
-    def mutate(self) -> "GamePlayer":
-        """Mutate this bot (genetic bots only)."""
-        assert self.genetic, "Attempted to mutate non-genetic bot!"
-        return self
+    def get_state(self) -> Dict[str, Any]:
+        """Get current state as dict. Override as needed."""
+        return {}
 
-    def create(self) -> None:
+    def set_state(self, state: Dict[str, Any]) -> None:
+        """Load state from dict. Override as needed."""
+        return
+
+    def create(self, game_info: Dict[str, Any]) -> None:
         """Create the bot. Called immediately following instantiation."""
+        return
+
+    def mutate(self) -> None:
+        """Mutate this bot's state (genetic bots only)."""
+        assert self.genetic, "Attempted to mutate non-genetic bot!"
         return
 
     def setup(self) -> None:
         """Set up this bot. Called before every game."""
         return
 
-    def do_turn(self, game_obj: "GameBase") -> Any:
+    def process(self, inputs: List[float], available_moves: List[float]) -> float:
         """Process one game turn."""
-        return
-
-    def process_game_result(self, result: GameResult) -> None:
-        """
-        Process the result of a single game.
-
-        Note that this bot instance will not accumulate any state from other
-        games. Use it to update the state, and then process the state data
-        from all games in process_batch_result().
-
-        :param result: GameResult object.
-        """
-        return
-
-    def process_batch_result(
-        self, score: float, score_other: float, clones: List["GamePlayer"]
-    ) -> None:
-        """
-        Process the result of a batch.
-
-        Each game creates a new clone, and each clone holds the data from
-        process_game_result(). This function is called at the end of the
-        batch to allow processing of the data from all of the games,
-        represented by the list of clones.
-
-        Note that the bot instance on which process_batch_result() is called
-        knows nothing about the previous games, and must use the clones to
-        process the data collected during games.
-
-        :param score: My average score.
-        :param score_other: The other bot's average score.
-        :param clones: List of bot clones, each containing data.
-
-        """
-        return
+        return 0.0

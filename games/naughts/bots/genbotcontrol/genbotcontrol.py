@@ -9,10 +9,11 @@ subject to compare against genbot1.
 import random
 
 
-from games.naughts.bots.bot_base import NaughtsBot
+from games.naughts.board import Board
+from games.naughts.bots.naughtsbot import NaughtsBot
 
 
-class GENBOTCONTROL(NaughtsBot):
+class GenBotControl(NaughtsBot):
     """
     Control bot for genbot1.
 
@@ -20,16 +21,15 @@ class GENBOTCONTROL(NaughtsBot):
     chance.
     """
 
-    def __init__(self, *args, **kwargs):
-        """Create new GENBOTCONTROL."""
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        """Create new GenBotControl."""
+        super().__init__()
         self.genetic = True
         return
 
-    def do_turn(self, game_obj):
+    def do_turn(self, current_board: Board):
         """Do one turn."""
-        current_board = game_obj
-        moves = self.get_possible_moves(current_board)
+        moves = current_board.get_possible_moves()
 
         # First, win the game if we can.
         straight_sequences = ["012", "345", "678", "036", "147", "258", "048", "246"]

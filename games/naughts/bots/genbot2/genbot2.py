@@ -1,27 +1,26 @@
 """Same as genbot1, except all moves use the magic algorithm."""
 
 
-import os
 import random
+from typing import Any, Dict
 
-
-from games.naughts.bots.bot_base import NaughtsBot
+from games.naughts.board import Board
 from games.naughts.bots.genbot2 import nodes
+from games.naughts.bots.naughtsbot import NaughtsBot
 
 
-class GENBOT2(NaughtsBot):
+class GenBot2(NaughtsBot):
     """Genbot2 - all moves are determined by the brain algorithm."""
 
-    def __init__(self, *args, **kwargs):
-        """Create new GENBOT2."""
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        """Create new GenBot2."""
+        super().__init__()
         self.genetic = True
         self.nodes = []
         self.output_nodes = []
         return
 
-    @property
-    def recipe(self):
+    def get_recipe(self):
         """Get the recipe for this bot."""
         recipe_blocks = []
         nodelist = list(self.nodes)
@@ -36,15 +35,14 @@ class GENBOT2(NaughtsBot):
             recipe_blocks.append(":".join(ingredient_blocks))
         return ",".join(recipe_blocks)
 
-    def to_dict(self):
-        """Serialise."""
-        self.set_data("recipe", self.recipe)
-        return super().to_dict()
+    def get_state(self) -> Dict[str, Any]:
+        """Save bot data."""
+        return {"recipe": self.get_recipe()}
 
-    def from_dict(self, data_dict):
-        """Load data and metadata from dict."""
-        super().from_dict(data_dict)
-        self.create_from_recipe(self.get_data("recipe"))
+    def set_state(self, state: Dict[str, Any]) -> None:
+        """Load bot from previous state."""
+        recipe = state["recipe"]
+        self.create_from_recipe(recipe)
         return
 
     def create(self):
@@ -52,8 +50,6 @@ class GENBOT2(NaughtsBot):
 
         Create new brain consisting of random nodes.
         """
-        self.log_trace("Creating brain")
-
         self.nodes = []
         self.output_nodes = []
 
@@ -130,7 +126,7 @@ class GENBOT2(NaughtsBot):
         node.input_nodes = []
         for num in input_numbers:
             node.input_nodes.append(self.nodes[num])
-        return self
+        return
 
     def get_random_node_instance(self):
         """Create new random node instance."""
@@ -141,14 +137,11 @@ class GENBOT2(NaughtsBot):
         instance = class_()
         return instance
 
-    def do_turn(self, game_obj):
+    def do_turn(self, current_board: Board):
         """Do one turn."""
-        current_board = game_obj
-        moves = self.get_possible_moves(current_board)
+        moves = current_board.get_possible_moves()
 
         # ENGAGE BRAIN
-        self.log.trace("Engaging brain")
-
         # Populate input nodes with the current board state.
         for p in range(9):
             self.nodes[p].set_value(current_board.getat(p) == " ")
@@ -160,19 +153,14 @@ class GENBOT2(NaughtsBot):
         their_id = self.other_identity
         for p in range(9):
             self.nodes[p + 18].set_value(current_board.getat(p) == their_id)
-        self.log_trace("Input nodes are populated")
 
         # Now process the brain.
         for index in range(27, len(self.nodes)):
             self.nodes[index].update()
 
-        self.log.trace("Brain has been processed")
-
         # And finally process the output nodes.
         for node in self.output_nodes:
             node.update()
-
-        self.log.trace("Output nodes have been processed")
 
         # Now sort moves according to the value of the output nodes.
         dsort = {}

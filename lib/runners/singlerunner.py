@@ -5,27 +5,19 @@ import random
 
 
 from lib.runners.gamerunnerbase import GameRunnerBase
+from lib.botfactory import BotFactory
+from lib.gamefactory import GameFactory
 
 
 class SingleRunner(GameRunnerBase):
     """Game Runner for a single game."""
 
-    def __init__(self) -> None:
-        """Create a new SingleRunner object."""
-        super().__init__()
-        self.enable_console_logging()
-        return
-
     def run(self) -> None:
         """Run a single game."""
-        bots = self.bot_manager.create_bots()
-        class_ = self.config.get_game_class()
-        for index, identity in enumerate(class_.identities):
-            bots[index].clear_score()
-            bots[index].identity = identity
+        bots = BotFactory(context=self, bot_config=self.config.get_bot_config()).create_bots()
 
-        # random.seed(1)
-        game_obj = self.config.get_game_obj(self)
-        game_obj.enable_file_logging()
-        game_obj.run(bots)
+        game_obj = GameFactory(self).get_game_obj(self.config.game)
+        game_obj.start(bots)
+        result = game_obj.run()
+        self.log.info(str(result))
         return

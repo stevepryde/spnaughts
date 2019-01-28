@@ -12,17 +12,16 @@ wins against randombot compared to other bots that likewise cannot lose.
 
 import random
 
+from games.naughts.board import Board
+from games.naughts.bots.naughtsbot import NaughtsBot
 
-from games.naughts.bots.bot_base import NaughtsBot
 
-
-class MINIMAXBOT(NaughtsBot):
+class MinimaxBot(NaughtsBot):
     """Bot that implements the Minimax algorithm with A-B optimization."""
 
-    def do_turn(self, game_obj):
+    def do_turn(self, current_board: Board) -> int:
         """Do one turn."""
-        current_board = game_obj
-        moves = self.get_possible_moves(current_board)
+        moves = current_board.get_possible_moves()
 
         # First, win the game if we can.
         straight_sequences = ["012", "345", "678", "036", "147", "258", "048", "246"]
@@ -96,7 +95,7 @@ class MINIMAXBOT(NaughtsBot):
             NOTE: depth is provided only for debugging purposes.
         :returns: The score of the specified move.
         """
-        moves = self.get_possible_moves(node_board)
+        moves = node_board.get_possible_moves()
         if not moves or node_board.is_ended():
             return self.get_board_score(node_board)
 
@@ -123,3 +122,18 @@ class MINIMAXBOT(NaughtsBot):
             if beta <= alpha:
                 break
         return v
+
+    def get_opponent(self, me: str = "") -> str:
+        """
+        Get the identity of the opponent.
+
+        :param me: Identity character for this bot. If not specified,
+            self.identity will be used.
+        :returns: The identity character of the other bot.
+        """
+        if not me:
+            me = self.identity
+
+        if me == "X":
+            return "O"
+        return "X"

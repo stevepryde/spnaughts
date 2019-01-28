@@ -3,9 +3,11 @@
 
 import json
 import time
-from typing import Iterator, List, Optional
+from typing import Callable, Iterator, List, Optional
 
-
+from lib.botfactory import BotFactory
+from lib.gameconfig import GameConfig
+from lib.gamefactory import GameFactory
 from lib.gameplayer import GamePlayer
 from lib.runners.gamerunnerbase import GameRunnerBase
 from lib.runners.genetic.processor import Processor, ProcessorMP
@@ -19,15 +21,14 @@ db = BotDB()
 class GeneticRunner(GameRunnerBase):
     """Genetic Runner. This is the main genetic algorithm."""
 
-    def __init__(self) -> None:
+    def __init__(self, config: GameConfig) -> None:
         """Create new GeneticRunner."""
-        super().__init__()
-        self.enable_console_logging()
+        super().__init__(config)
         self.bots = []  # type: List[GamePlayer]
         self.genetic_bot_index = 0
         self.genetic_index = 0
-        self.genetic_name = None  # type: Optional[str]
-        self.genetic_class = None
+        self.genetic_name = ""
+        self.bot_factory = BotFactory(context=self, bot_config=self.config.get_bot_config())
         return
 
     def setup(self) -> None:
@@ -35,7 +36,7 @@ class GeneticRunner(GameRunnerBase):
         self.genetic_index = 0
 
         # Determine which bot is genetic.
-        self.bots = self.bot_manager.create_bots()
+        self.bots = self.bot_factory.create_bots()
         if not self.bots[0].genetic:
             self.genetic_index = 1
         elif self.bots[1].genetic:
@@ -48,7 +49,6 @@ class GeneticRunner(GameRunnerBase):
         # Store the name of the genetic bot.
         # This is used to generate new ones.
         self.genetic_name = self.bots[self.genetic_index].name
-        self.genetic_class = self.bot_manager.get_bot_class(self.genetic_name)
         return
 
     def run(self) -> None:
@@ -64,9 +64,14 @@ class GeneticRunner(GameRunnerBase):
             return
 
         selected_samples = []  # type: List[GamePlayer]
-        score_threshold = -999  # This will be reset after first round.
+        score_threshold = -999.0  # This will be reset after first round.
 
-        processor = ProcessorMP(context=self, bot=other_bot, genetic_index=self.genetic_index)
+        processor = ProcessorMP(
+            context=self,
+            bot=genetic_bot,
+            genetic_index=self.genetic_index,
+            batch_config=self.config.get_batch_config(),
+        )
 
         for gen in range(self.config.num_generations):
             self.log.info("--------------------------")
@@ -82,10 +87,9 @@ class GeneticRunner(GameRunnerBase):
             for batch in processor.run(
                 samples=new_samples, generation_index=gen, score_threshold=score_threshold
             ):
-                # Collect scores.
-                sample = self.bot_manager.create_bot_from_class(self.genetic_class)
+                sample = self.bot_factory.create_bot(self.genetic_name)
                 sample.from_dict(batch.info["bot_data"])
-                # sample.score = batch.info['genetic_score']
+                sample.score = batch.info["genetic_score"]
                 genetic_pool.append(sample)
 
             # Sort the pool based on score, in descending order.
@@ -94,7 +98,6 @@ class GeneticRunner(GameRunnerBase):
             selected_samples = self.select_samples(sorted_pool)
 
             selected_scores = []
-            selected_recipes = []
             for sample in selected_samples:
                 # Check if this is one of the top for this bot.
                 bot_name = self.bots[self.genetic_index].name
@@ -104,7 +107,6 @@ class GeneticRunner(GameRunnerBase):
                     score_threshold = score
 
                 selected_scores.append("{:.3f}".format(score))
-                selected_recipes.append("[{:.3f}]: '{}'".format(score, sample.recipe))
 
                 # Add to DB.
                 bot_id = db.insert_bot(bot_name, sample.to_dict(), score)
@@ -113,13 +115,6 @@ class GeneticRunner(GameRunnerBase):
             self.log.info(
                 "Generation {} highest scores: [{}]".format(gen, ", ".join(selected_scores))
             )
-
-            # # Write winning recipes to a file.
-            # with self.open_unique_file(
-            #     prefix="winning_recipes_GEN{:04d}".format(gen)
-            # ) as f:
-            #     bot_list = [x.to_dict() for x in selected_samples]
-            #     json.dump(bot_list, f)
 
         end_time = time.monotonic()
         duration = end_time - start_time
@@ -145,11 +140,7 @@ class GeneticRunner(GameRunnerBase):
             yield sample
 
             for s in range(1, self.config.num_samples):
-                bot_obj = self.bot_manager.create_bot_from_class(self.genetic_class)
-
-                if not bot_obj:
-                    self.log.critical("Error instantiating bot '{}'".format(bot_obj.genetic_name))
-                    return
+                bot_obj = self.bot_factory.create_bot(self.genetic_name)
 
                 # Name it using the generation and sample number.
                 bot_obj.name = "{}-{}-{}".format(self.genetic_name, generation, s)
@@ -162,8 +153,9 @@ class GeneticRunner(GameRunnerBase):
     def generate_original_samples(self, generation: int) -> Iterator[GamePlayer]:
         """Generate samples from scratch."""
         # Start from scratch, just create random bots.
+        class_ = GameFactory(self).get_game_class(self.config.game)
         for s in range(1, self.config.num_samples + 1):
-            bot_obj = self.bot_manager.create_bot_from_class(self.genetic_class)
+            bot_obj = self.bot_factory.create_bot(self.genetic_name)
 
             if not bot_obj:
                 self.log.critical("Error instantiating bot '{}'".format(self.genetic_name))
@@ -172,7 +164,7 @@ class GeneticRunner(GameRunnerBase):
             # Name it using the generation and sample number.
             # This is generation 0.
             bot_obj.name = "{}-{}-{}".format(self.genetic_name, generation, s)
-            bot_obj.create()
+            bot_obj.create(game_info=class_.get_game_info())
 
             yield bot_obj
         return
