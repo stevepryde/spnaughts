@@ -8,7 +8,6 @@ from lib.batch import Batch
 from lib.gamecontext import GameContext
 from lib.gameplayer import GamePlayer
 from lib.runners.genetic.batchworker import BatchWorker
-from lib.globals import timer
 
 
 class Processor:
@@ -17,13 +16,13 @@ class Processor:
     def __init__(
         self,
         context: GameContext,
-        bot: GamePlayer,
+        other_bot: GamePlayer,
         genetic_index: int,
         batch_config: Dict[str, Any],
     ):
         """Create a new Processor object."""
         self.context = context
-        self.bot = bot
+        self.other_bot = other_bot
         self.batch_config = batch_config
         self.genetic_index = genetic_index
         return
@@ -39,9 +38,9 @@ class Processor:
         """
         for index, sample in enumerate(samples):
             if self.genetic_index == 0:
-                bot_list = [sample, self.bot]
+                bot_list = [sample, self.other_bot]
             else:
-                bot_list = [self.bot, sample]
+                bot_list = [self.other_bot, sample]
 
             batch = Batch(bots=bot_list, batch_config=self.batch_config)
             batch.label = "Gen {} - Sample {}".format(generation_index, index)
@@ -79,12 +78,12 @@ class ProcessorMP(Processor):
     def __init__(
         self,
         context: GameContext,
-        bot: GamePlayer,
+        other_bot: GamePlayer,
         genetic_index: int,
         batch_config: Dict[str, Any],
     ) -> None:
         """Create ProcessorMP object."""
-        super().__init__(context, bot, genetic_index, batch_config)
+        super().__init__(context, other_bot, genetic_index, batch_config)
 
         self.num_workers = multiprocessing.cpu_count() - 2
         if self.num_workers < 1:
@@ -111,42 +110,38 @@ class ProcessorMP(Processor):
         for i in range(self.num_workers):
             worker_inputs[i] = []
 
-        with timer("Generate batches"):
-            for index, sample in enumerate(samples):
-                if self.genetic_index == 0:
-                    bot_list = [sample, self.bot]
-                else:
-                    bot_list = [self.bot, sample]
+        for index, sample in enumerate(samples):
+            if self.genetic_index == 0:
+                bot_list = [sample, self.other_bot]
+            else:
+                bot_list = [self.other_bot, sample]
 
-                batch = Batch(bots=bot_list, batch_config=self.batch_config)
-                batch.label = "Gen {} - Sample {}".format(generation_index, index)
-                batch.info = {
-                    "generation": generation_index,
-                    "sample": index,
-                    "index": self.genetic_index,
-                }
+            batch = Batch(bots=bot_list, batch_config=self.batch_config)
+            batch.label = "Gen {} - Sample {}".format(generation_index, index)
+            batch.info = {
+                "generation": generation_index,
+                "sample": index,
+                "index": self.genetic_index,
+            }
 
-                qindex = index % self.num_workers
-                worker_inputs[qindex].append(batch)
+            qindex = index % self.num_workers
+            worker_inputs[qindex].append(batch)
 
-        with timer("Start workers"):
-            for qid in range(self.num_workers):
-                worker = BatchWorker(worker_inputs[qid], q_out, score_threshold)
-                worker.start()
-                workers.append(worker)
+        for qid in range(self.num_workers):
+            worker = BatchWorker(worker_inputs[qid], q_out, score_threshold)
+            worker.start()
+            workers.append(worker)
 
-        with timer("Wait for workers"):
-            workers_finished = 0
-            while workers_finished < len(workers):
-                batch = q_out.get()
-                if batch is None:
-                    workers_finished += 1
-                    continue
+        workers_finished = 0
+        while workers_finished < len(workers):
+            batch = q_out.get()
+            if batch is None:
+                workers_finished += 1
+                continue
 
-                yield batch
+            yield batch
 
-        with timer("Join workers"):
-            for worker in workers:
-                worker.join()
+        for worker in workers:
+            worker.join()
         return
 

@@ -68,7 +68,7 @@ class GeneticRunner(GameRunnerBase):
 
         processor = ProcessorMP(
             context=self,
-            bot=genetic_bot,
+            other_bot=other_bot,
             genetic_index=self.genetic_index,
             batch_config=self.config.get_batch_config(),
         )
