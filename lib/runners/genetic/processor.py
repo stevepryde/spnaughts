@@ -2,7 +2,7 @@
 
 import multiprocessing
 import time
-from typing import Dict, Iterator, List
+from typing import Any, Dict, Iterable, Iterator, List
 
 from lib.batch import Batch
 from lib.gamecontext import GameContext
@@ -14,15 +14,22 @@ from lib.globals import timer
 class Processor:
     """Batch processor."""
 
-    def __init__(self, context: GameContext, bot: GamePlayer, genetic_index: int):
+    def __init__(
+        self,
+        context: GameContext,
+        bot: GamePlayer,
+        genetic_index: int,
+        batch_config: Dict[str, Any],
+    ):
         """Create a new Processor object."""
         self.context = context
         self.bot = bot
+        self.batch_config = batch_config
         self.genetic_index = genetic_index
         return
 
     def run(
-        self, samples: List[GamePlayer], generation_index: int, score_threshold: float
+        self, samples: Iterable[GamePlayer], generation_index: int, score_threshold: float
     ) -> Iterator[Batch]:
         """
         Process the specified samples.
@@ -36,7 +43,7 @@ class Processor:
             else:
                 bot_list = [self.bot, sample]
 
-            batch = Batch(parent_context=self.context, bots=bot_list)
+            batch = Batch(bots=bot_list, batch_config=self.batch_config)
             batch.label = "Gen {} - Sample {}".format(generation_index, index)
             batch.info = {
                 "generation": generation_index,
@@ -44,10 +51,10 @@ class Processor:
                 "index": self.genetic_index,
             }
 
-            avg_scores = batch.run_batch()
+            batch_result = batch.run_batch()
 
-            genetic_score = avg_scores[self.genetic_index]
-            batch.info["avg_scores"] = avg_scores
+            genetic_identity = batch.identities[self.genetic_index]
+            genetic_score = batch_result.get_score(genetic_identity)
             batch.info["genetic_score"] = genetic_score
             batch.bots[self.genetic_index].score = genetic_score
             batch.info["bot_data"] = batch.bots[self.genetic_index].to_dict()
@@ -69,9 +76,15 @@ class Processor:
 class ProcessorMP(Processor):
     """Multi-process processor."""
 
-    def __init__(self, context: GameContext, bot: GamePlayer, genetic_index: int) -> None:
+    def __init__(
+        self,
+        context: GameContext,
+        bot: GamePlayer,
+        genetic_index: int,
+        batch_config: Dict[str, Any],
+    ) -> None:
         """Create ProcessorMP object."""
-        super().__init__(context, bot, genetic_index)
+        super().__init__(context, bot, genetic_index, batch_config)
 
         self.num_workers = multiprocessing.cpu_count() - 2
         if self.num_workers < 1:
@@ -81,7 +94,7 @@ class ProcessorMP(Processor):
         return
 
     def run(
-        self, samples: List[GamePlayer], generation_index: int, score_threshold: float
+        self, samples: Iterable[GamePlayer], generation_index: int, score_threshold: float
     ) -> Iterator[Batch]:
         """
         Process the specified samples.
@@ -105,7 +118,7 @@ class ProcessorMP(Processor):
                 else:
                     bot_list = [self.bot, sample]
 
-                batch = Batch(parent_context=self.context, bots=bot_list)
+                batch = Batch(bots=bot_list, batch_config=self.batch_config)
                 batch.label = "Gen {} - Sample {}".format(generation_index, index)
                 batch.info = {
                     "generation": generation_index,

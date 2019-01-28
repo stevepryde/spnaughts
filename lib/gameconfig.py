@@ -1,6 +1,6 @@
 """Game config object."""
 
-from typing import Callable, Type
+from typing import Any, Callable, Dict, List, Type
 
 import argparse
 import importlib
@@ -57,25 +57,31 @@ class GameConfig:
     def __init__(self, base_path: str) -> None:
         """Create a new GameConfig object."""
         self.base_path = base_path
-        self.game = None
+        self.game = ""
         self.silent = False
         self.console_logging = False
         self.batch_mode = False
         self.genetic_mode = False
         self.no_batch_summary = False
-        self.stop_on_loss = ""
-        self.custom_arg = None
         self.batch_size = 1
         self.num_generations = 1
         self.num_samples = 1
         self.keep_samples = 1
         self.bot_id = None
+        self.bot1 = ""
+        self.bot2 = ""
 
         args = self.define_args()
         self.parse_args(args)
 
         self.init_logging()
         return
+
+    @property
+    def bot_names(self) -> List[str]:
+        """Get the list of bot names."""
+        # TODO: This will need updating when we get to 3+ player games.
+        return [self.bot1, self.bot2]
 
     def define_args(self) -> argparse.Namespace:
         """Define command-line arguments."""
@@ -96,9 +102,6 @@ class GameConfig:
             default=0,
             help="Batch mode. Specify the number of games to " "run",
         )
-        parser.add_argument(
-            "--magic", action="store_true", help="Use 'magic' batch type (omnibot only!)"
-        )
         parser.add_argument("--stoponloss", help="Stop if the specified player loses")
         parser.add_argument(
             "--genetic",
@@ -115,12 +118,6 @@ class GameConfig:
             type=check_int1plus,
             help='Number of winning samples to "keep" ' "(Requires --genetic)",
         )
-        parser.add_argument("--custom", help="Custom argument (passed to bot)")
-        parser.add_argument(
-            "--loggames",
-            action="store_true",
-            help="Also log individual games (may require a lot of disk space!)",
-        )
         parser.add_argument("--botid", action="store", help="Play against this bot id (genetic)")
 
         args = parser.parse_args()
@@ -135,10 +132,7 @@ class GameConfig:
         requires_genetic = ["samples", "keep", "top"]
 
         args_dict = vars(args)
-        if args.genetic and args.magic:
-            if args.batch:
-                parser.error("Cannot use --magic and --batch together")
-        elif not args.batch:
+        if not args.batch:
             for req in requires_batch:
                 if req in args_dict and args_dict[req]:
                     parser.error("Option --{} requires --batch".format(req))
@@ -154,22 +148,11 @@ class GameConfig:
         """Parse the command-line arguments."""
         self.game = args.game
 
-        if args.stoponloss:
-            self.stop_on_loss = args.stoponloss
-
-        if args.custom:
-            self.custom_arg = args.custom
-
-        self.log_games = args.loggames
         self.bot1 = args.bot1
         self.bot2 = args.bot2
 
-        if args.magic or args.batch > 0:
-            if args.magic:
-                self.batch_size = 0
-            else:
-                self.batch_size = int(args.batch)
-
+        if args.batch > 0:
+            self.batch_size = int(args.batch)
             self.batch_mode = True
             self.silent = True
 
@@ -204,20 +187,15 @@ class GameConfig:
             quit_game("Error creating data dir '{}': {}".format(self.data_path, str(e)))
         return
 
-    def get_game_class(self) -> Type[GameBase]:
-        """Get the class for the SingleGame object for the game type."""
-        module_name = "games.{}.singlegame".format(self.game)
-        try:
-            module = importlib.import_module(module_name)
-        except ImportError as e:
-            log_critical("Failed to import game module '{}': {}".format(module_name, e))
-            log_critical(traceback.format_exc())
-            raise
+    def get_batch_config(self) -> Dict[str, Any]:
+        """Get config required for batches."""
+        return {
+            "batch_size": self.batch_size,
+            "bot_config": self.get_bot_config(),
+            "game": self.game,
+        }
 
-        class_ = getattr(module, "SingleGame")
-        return class_
+    def get_bot_config(self) -> Dict[str, Any]:
+        """Get config required for bots."""
+        return {"bot_names": self.bot_names, "bot_id": self.bot_id, "game": self.game}
 
-    def get_game_obj(self, parent_context: GameContext) -> GameBase:
-        """Get a new instance of the SingleGame object for the game type."""
-        class_ = self.get_game_class()
-        return class_(parent_context=parent_context)

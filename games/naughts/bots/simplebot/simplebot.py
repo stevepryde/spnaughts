@@ -6,17 +6,16 @@ it just follows a pre-defined list of moves. Not very intelligent.
 Might be useful for training AI bots.
 """
 
+from games.naughts.board import Board
+from games.naughts.bots.naughtsbot import NaughtsBot
 
-from games.naughts.bots.bot_base import NaughtsBot
 
-
-class SIMPLEBOT(NaughtsBot):
+class SimpleBot(NaughtsBot):
     """Simple bot that just follows a pre-defined list of moves."""
 
-    def do_turn(self, game_obj):
+    def do_turn(self, current_board: Board) -> int:
         """Do one turn for the SimpleBot."""
-        current_board = game_obj
-        moves = self.get_possible_moves(current_board)
+        moves = current_board.get_possible_moves()
 
         # First, win the game if we can.
         straight_sequences = ["012", "345", "678", "036", "147", "258", "048", "246"]
@@ -46,7 +45,6 @@ class SIMPLEBOT(NaughtsBot):
                 return 0
 
         # Otherwise pick the first move from a series of preferred moves.
-        self.log_debug("Fall back to next move in preferred list")
         preferred_moves_str = "402681357"
         preferred_moves = list(preferred_moves_str)
         for move in preferred_moves:

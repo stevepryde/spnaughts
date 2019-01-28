@@ -1,21 +1,26 @@
 """Base class for a generic game runner."""
 
-from lib.botmanager import BotManager
+import os
+
+from lib.gameconfig import GameConfig
 from lib.gamecontext import GameContext
-from lib.globals import get_config
+from lib.support.pathmaker import get_unique_dir
 
 
 class GameRunnerBase(GameContext):
     """Game Runner object."""
 
-    def __init__(self) -> None:
+    def __init__(self, config: GameConfig) -> None:
         """Create new GameRunnerBase object."""
-        super().__init__(parent_context=None)
+        super().__init__()
+        self.config = config
         classname = self.__class__.__name__.lower()
         prefix = "{}_{}_{}_".format(classname, self.config.bot1, self.config.bot2)
-        self.enable_file_logging(subdir_prefix=prefix)
+        base_path = os.path.join(config.base_path, "logs", config.game)
+        self.path = get_unique_dir(base_path=base_path, prefix=prefix)
+        self.log.log_to_console()
+        self.log.log_to_file(filename=os.path.join(self.path, "game.log"))
         self.log.set_as_default()
-        self.bot_manager = BotManager(self)
         return
 
     def run(self) -> None:

@@ -3,22 +3,23 @@
 import json
 import os
 import random
+from typing import Any, Dict, List
+
+from lib.gameplayer import GamePlayer
+from .neurons import InputNeuron, Neuron, NeuronLayer
 
 
-from games.naughts.bots.bot_base import NaughtsBot
-from games.naughts.bots.nbot1.neurons import InputNeuron, Neuron, NeuronLayer
-
-
-class NBOT1(NaughtsBot):
+class NBot1(GamePlayer):
     """NBOT1 - all moves are determined by the neural net."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         """Create new NBOT1."""
-        super().__init__(*args, **kwargs)
+        super().__init__()
         self.genetic = True
         self.input_nodes = []
         self.layers = []
         self.nodes_per_layer = 50
+        self.created = False
         return
 
     @property
@@ -27,28 +28,27 @@ class NBOT1(NaughtsBot):
         dlayers = [x.to_dict() for x in self.layers]
         return json.dumps({"nodes": self.nodes_per_layer, "layers": dlayers})
 
-    def to_dict(self):
-        """Serialise."""
-        self.set_data("recipe", self.recipe)
-        return super().to_dict()
+    def get_state(self) -> Dict[str, Any]:
+        """Get current state as dict. Override as needed."""
+        return {"recipe": self.recipe}
 
-    def from_dict(self, data_dict):
-        """Load data and metadata from dict."""
-        super().from_dict(data_dict)
-        self.create_from_recipe(self.get_data("recipe"))
+    def set_state(self, state: Dict[str, Any]) -> None:
+        """Load state from dict. Override as needed."""
+        self.create_from_recipe()
         return
 
-    def create(self):
+    def create(self, game_info: Dict[str, Any]) -> None:
         """Create a new NBOT1, using the specified config.
 
         Create new brain consisting of random nodes.
         """
-        self.log_trace("Creating brain")
+        self.log.trace("Creating brain")
 
         self.input_nodes = []
         self.layers = []
+        self.set_data("game_info", game_info)
 
-        for _ in range(9 * 2):
+        for _ in range(game_info.get("input_count", 1)):
             self.input_nodes.append(InputNeuron())
 
         prev_layer_nodes = self.input_nodes
@@ -66,17 +66,24 @@ class NBOT1(NaughtsBot):
         # And we're done.
         return
 
-    def create_from_recipe(self, recipe):
+    def create_from_recipe(self, input_count: int = 0):
         """Create bot from recipe."""
+        recipe = self.get_data("recipe")
+        assert recipe, "Recipe not found!"
+
+        game_info = self.get_data("game_info")
+        assert game_info, "Game info not set!"
+
         d = json.loads(recipe)
         self.input_nodes = []
         self.layers = []
 
-        for _ in range(9 * 2):
+        for _ in range(game_info.get("input_count", 1)):
             self.input_nodes.append(InputNeuron())
 
-        prev_layer_nodes = self.input_nodes
         dlayers = d.get("layers", [])
+        prev_layer_nodes = self.input_nodes
+
         for dlayer in dlayers:
             layer = NeuronLayer.from_dict(dlayer, prev_layer_nodes)
             self.layers.append(layer)
@@ -95,45 +102,24 @@ class NBOT1(NaughtsBot):
                 node.bias += (random.random() * 0.2) - 0.1
         return self
 
-    def do_turn(self, game_obj):
-        """Do one turn."""
-        current_board = game_obj
-        moves = self.get_possible_moves(current_board)
-
-        # ENGAGE BRAIN
-        self.log.trace("Engaging brain")
-
-        # Populate input nodes with the current board state.
-        for p in range(9):
-            c = current_board.getat(p)
-            v1 = 0
-            v2 = 0
-            if c == self.identity:
-                v1 = 1.0
-            elif c == self.other_identity:
-                v2 = 1.0
-
-            self.input_nodes[p].output = v1
-            self.input_nodes[p + 9].output = v2
-
-        self.log_trace("Input nodes are populated")
+    def process(self, inputs: List[float], available_moves: List[float]) -> float:
+        """Process one game turn."""
+        for p, input_value in enumerate(inputs):
+            self.input_nodes[p].output = input_value
 
         # Now process the brain.
         for layer in self.layers:
             layer.process()
-
-        self.log.trace("Brain has been processed")
 
         # And finally process the output nodes.
         output_layer = self.layers[-1]
 
         # Now sort moves according to the value of the output nodes.
         dsort = {}
-        for move in moves:
+        for move in available_moves:
             dsort[move] = output_layer.nodes[move].output
 
-        sorted_moves = sorted(dsort, key=dsort.__getitem__, reverse=True)
+        sorted_moves = sorted(dsort, key=dsort.get, reverse=True)
         selected_move = int(sorted_moves[0])
 
         return selected_move
-        # END OF BRAIN ENGAGEMENT

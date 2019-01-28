@@ -39,13 +39,14 @@ minimaxbot.
 import random
 
 
-from games.naughts.bots.bot_base import NaughtsBot
+from games.naughts.board import Board
+from games.naughts.bots.naughtsbot import NaughtsBot
 
 
 DEBUG = False
 
 
-class PERFECTBOT(NaughtsBot):
+class PerfectBot(NaughtsBot):
     """Experimental bot that follows pre-determined rules."""
 
     def __init__(self):
@@ -65,10 +66,9 @@ class PERFECTBOT(NaughtsBot):
         self.scenario_rotation = -1
         return
 
-    def do_turn(self, game_obj):
+    def do_turn(self, current_board: Board):
         """Do one turn."""
-        current_board = game_obj
-        moves = self.get_possible_moves(current_board)
+        moves = current_board.get_possible_moves()
 
         # First, win the game if we can.
         straight_sequences = ["012", "345", "678", "036", "147", "258", "048", "246"]
@@ -109,8 +109,6 @@ class PERFECTBOT(NaughtsBot):
         if not self.defensive:
             # Not in defensive mode. I have a limited time to set up a 2WW
             # scenario.
-            self.log_debug("I am in offensive mode")
-
             if self.scenario == 0:
                 # Choose a 2WW scenario at random.
                 self.scenario = random.randint(1, 3)
@@ -137,10 +135,6 @@ class PERFECTBOT(NaughtsBot):
             # for n in range(1,4):
             #   if (n not in scenarios):
             #     scenarios.append(n)
-
-            self.log_debug(
-                "Trying scenario {} in rotation {}".format(self.scenario, self.scenario_rotation)
-            )
 
             for scen in scenarios:
                 for rotation in rotations:
@@ -211,7 +205,6 @@ class PERFECTBOT(NaughtsBot):
             # available to us.
 
         self.defensive = True
-        self.log_debug("I am in defensive mode")
         # Defensive: Avoid 2-way wins.
         for rotation in range(4):
             b = current_board.get_rotated_board(rotation)
@@ -221,7 +214,6 @@ class PERFECTBOT(NaughtsBot):
             # _O
             # *_X
             if b.getat_multi("03678") == "{0}   {0}".format(their_identity):
-                self.log_debug("Prevent 2WW scenario 1")
                 return self.get_unrotated_move(3, rotation)
 
             # Scenario 2:
@@ -229,7 +221,6 @@ class PERFECTBOT(NaughtsBot):
             #  OX
             #   _
             if b.getat_multi("01258") == "{0}  {0} ".format(their_identity):
-                self.log_debug("Prevent 2WW scenario 2")
                 return self.get_unrotated_move(2, rotation)
 
             # Scenario 2 in mirrored form:
@@ -237,7 +228,6 @@ class PERFECTBOT(NaughtsBot):
             # _O
             # *X_
             if b.getat_multi("03678") == "{0}  {0} ".format(their_identity):
-                self.log_debug("Prevent mirrored 2WW scenario 2")
                 return self.get_unrotated_move(6, rotation)
 
             # Scenario 3:
@@ -251,7 +241,6 @@ class PERFECTBOT(NaughtsBot):
             #  OX
             #   _
             if b.getat_multi("01258") == " {0} {0} ".format(their_identity):
-                self.log_debug("Prevent 2WW scenario 3")
                 return self.get_unrotated_move(2, rotation)
 
             # Scenario 4:
@@ -260,7 +249,6 @@ class PERFECTBOT(NaughtsBot):
             # _X
             # * O
             if b.getat_multi("02346") == "{0}  {0} ".format(their_identity):
-                self.log_debug("Prevent 2WW scenario 4")
                 # This scenario can go two ways, so cover both.
                 move = b.get_first_empty_space("62")
                 return self.get_unrotated_move(move, rotation)
@@ -271,14 +259,12 @@ class PERFECTBOT(NaughtsBot):
             #  X
             # _ O
             if b.getat_multi("01246") == "{0}  {0} ".format(their_identity):
-                self.log_debug("Prevent mirrored 2WW scenario 4")
                 move = b.get_first_empty_space("26")
                 return self.get_unrotated_move(move, rotation)
 
             # TODO: DID I MISS ANY? It should be impossible to win here.
 
         # Otherwise pick the first move from a series of preferred moves.
-        self.log_debug("Fall back to next move in preferred list")
         preferred_moves_str = "402681357"
         preferred_moves = list(preferred_moves_str)
         for move in preferred_moves:

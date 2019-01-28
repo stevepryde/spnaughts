@@ -1,26 +1,75 @@
 """Module for running a single game of naughts and crosses."""
 
 
-import copy
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Tuple
 
-from games.naughts import board
-from games.naughts.bots.bot_base import NaughtsBot
+from games.naughts.board import Board
 from lib.gamebase import GameBase
-from lib.gamecontext import GameContext
-from lib.gameresult import GameResult, STATUS_LOSS, STATUS_TIE, STATUS_WIN
+from lib.gameresult import GameResult
 
 
 class SingleGame(GameBase):
     """Run a single game of naughts and crosses."""
 
     identities = ("X", "O")
+    input_count = 9
 
-    def __init__(self, parent_context: GameContext) -> None:
+    def __init__(self) -> None:
         """Create a new SingleGame object."""
-        super().__init__(parent_context=parent_context)
-        self.game_board = None  # type: Optional[board.Board]
-        self.current_bot_id = 0
+        super().__init__()
+        self.game_board = Board()
+        return
+
+    def set_initial_state(self) -> None:
+        """Set the initial game state."""
+        self.game_board = Board()
+        return
+
+    def set_state(self, state: Dict[str, Any]) -> None:
+        """Apply state to this game object."""
+        super().set_state(state)
+        self.game_board = state.get("board", Board())
+        return
+
+    def get_state(self) -> Dict[str, Any]:
+        """Get the game state."""
+        state = super().get_state()
+        state.update({"board": self.game_board})
+        return state
+
+    def get_inputs(self, identity: str) -> Tuple[List[float], List[float]]:
+        """Convert current game state into a list of player-specific inputs."""
+        inputs = []
+        for pos in range(9):
+            c = self.game_board.getat(pos)
+            if c == identity:
+                inputs.append(1.0)
+            elif c == " ":
+                inputs.append(0.0)
+            else:
+                inputs.append(-1.0)
+        return inputs, self.game_board.get_possible_moves()
+
+    def update(self, identity: str, output: float) -> None:
+        """Assign closest valid move to this bot."""
+        # TODO: The next step is to abort games if a bot returned an invalid move.
+        #       This will force bots to learn the game rules first.
+        moves = self.game_board.get_possible_moves()
+        assert moves, "No valid move available!"
+
+        target_move = None
+        if len(moves) == 1:
+            target_move = moves[0]
+        else:
+            lowest_diff = None
+            for move in moves:
+                diff = abs(output - move)
+                if lowest_diff is None or diff < lowest_diff:
+                    lowest_diff = diff
+                    target_move = move
+
+        assert target_move is not None, "BUG: update() failed to select target move!"
+        self.game_board.setat(target_move, identity)
         return
 
     def is_ended(self) -> bool:
@@ -28,164 +77,46 @@ class SingleGame(GameBase):
         assert self.game_board, "No game board!"
         return self.game_board.is_ended()
 
-    def clone(self) -> "SingleGame":
-        """Clone this instance of SingleGame."""
-        assert self.parent_context, "Invalid parent context"
-        cloned_game = SingleGame(self.parent_context)
-        cloned_game.bots = copy.deepcopy(self.bots)
-        cloned_game.game_board = copy.deepcopy(self.game_board)
-        cloned_game.current_bot_id = self.current_bot_id
-        cloned_game.num_turns = copy.deepcopy(self.num_turns)
-        return cloned_game
+    def get_result(self) -> GameResult:
+        """Process and return game result."""
+        result = GameResult()
 
-    def start(self, bots: List[NaughtsBot]) -> None:
-        """
-        Start new game.
-
-        :param bots: List of bots to run.
-        """
-        super().start(bots)
-        self.game_board = board.Board()
-        return
-
-    def do_turn(self) -> List["SingleGame"]:
-        """Process one game turn."""
-        assert self.game_board, "No game board!"
-
-        if not self.config.silent:
-            self.game_board.show()
-
-        current_bot = self.bots[self.current_bot_id]
-        name = current_bot.name
-        identity = current_bot.identity
-
-        self.log.info("What is your move, '{}'?".format(name))
-
-        # Allow for a bot to return multiple moves. This is useful for running
-        # the 'omnibot' in order to train or measure other bots.
-        moves = current_bot.do_turn(self.game_board.copy())
-
-        # Update current_bot_id early, this way it will be copied to any
-        # cloned games...
-        if self.current_bot_id == 0:
-            self.current_bot_id = 1
-        else:
-            self.current_bot_id = 0
-
-        game_clones = []
-        if isinstance(moves, list):
-            for move in moves:
-                # clone this game.
-                cloned_game = self.clone()
-
-                # apply move to clone.
-                cloned_game.apply_move(int(move), name, identity)
-
-                # append to game_clones
-                game_clones.append(cloned_game)
-        else:
-            # Single move only.
-            self.apply_move(int(moves), name, identity)
-
-            # This will not affect the standard game runner.
-            # The omnibot runner should use the returned list of games and
-            # discard the one that was used to call do_turn().
-            game_clones = [self]
-
-        return game_clones
-
-    def apply_move(self, move: int, name: str, identity: str) -> None:
-        """
-        Apply the specified move to the current game.
-
-        :param move: The move to apply.
-        :param name: The name of the bot.
-        :param identity: The player identity ('X' or 'O')
-        """
-        assert self.game_board, "No game board!"
-
-        self.log.info("'{}' chose move ({})".format(name, move))
-        self.log.info("")
-
-        if move < 0 or move > 8:
-            self.log.error("Bot '{}' performed a move out of range ({})".format(name, move))
-            return
-
-        if self.game_board.getat(move) != " ":
-            self.log.error("Bot '{}' performed an illegal move ({})".format(name, move))
-            return
-
-        self.game_board.setat(move, identity)
-        self.num_turns[identity] += 1
-
-        if not self.config.silent:
-            self.game_board.show()
-        return
-
-    def get_result(self) -> Dict[str, Any]:
-        """Get information about this game."""
-        assert self.game_board, "No game board!"
-
-        if len(self.bots) != 2:
-            self.log.error("No bots have been set up - was this game started?")
-            return {}
+        assert len(self.bots) == 2, "BUG: bots have not been set up - was this game started?"
 
         outcome = self.game_board.get_game_state()
+        assert outcome > 0, "BUG: Game ended with invalid state of 0 - was this game finished?"
 
-        if outcome == 0:
-            self.log.error("Game ended with invalid state of 0 - was this " "game finished?")
-            return {}
-
-        result_X = GameResult()
-        result_O = GameResult()
-
+        outcomes = [0, 0]
+        result.set_tie()
         if outcome == 1:
-            self.log.info("Bot '{}' wins".format(self.bots[0].name))
-            result_X.status = STATUS_WIN
-            result_O.status = STATUS_LOSS
+            result.set_win()
+            outcomes = [1, -1]
         elif outcome == 2:
-            self.log.info("Bot '{}' wins".format(self.bots[1].name))
-            result_X.status = STATUS_LOSS
-            result_O.status = STATUS_WIN
-        elif outcome == 3:
-            self.log.info("It's a TIE")
-            result_X.status = STATUS_TIE
-            result_O.status = STATUS_TIE
-        else:
-            self.log.error("Game ended with invalid state ({})".format(outcome))
-            return {}
+            result.set_win()
+            outcomes = [-1, 1]
+        elif outcome > 3:
+            assert (
+                False
+            ), "BUG: Invalid game outcome returned from board.get_game_state(): {}".format(outcome)
 
-        result_X.score = self.calculate_score(self.num_turns["X"], result_X.status)  # type: ignore
-        result_O.score = self.calculate_score(self.num_turns["O"], result_O.status)  # type: ignore
+        for i, x in enumerate(self.identities):
+            result.set_score(x, self.calculate_score(self.num_turns[x], outcomes[i]))
 
-        self.bots[0].score = result_X.score  # type: ignore
-        self.bots[1].score = result_O.score  # type: ignore
-        self.bots[0].process_game_result(result_X)
-        self.bots[1].process_game_result(result_O)
+        return result
 
-        self.log.info(
-            "Scores: '{}':{:.2f} , '{}':{:.2f}".format(
-                self.bots[0].name, result_X.score, self.bots[1].name, result_O.score
-            )
-        )
-
-        game_info = {"result": outcome, "scores": {"X": result_X.score, "O": result_O.score}}
-        return game_info
-
-    def calculate_score(self, num_turns: int, status: str) -> float:
+    def calculate_score(self, num_turns: int, outcome: int) -> float:
         """
         Calculate the 'score' for this game.
 
         :param num_turns: The number of turns played.
-        :param status: The status code (see GameResult).
+        :param outcome: 1 if this player won, 0 for a draw, or -1 for a loss.
         :returns: The game score, as float.
         """
         score = 10 - num_turns
-        if status != STATUS_WIN:
-            if status == STATUS_TIE:
-                score = 0
-            else:
-                assert status == STATUS_LOSS, "Invalid status: {}".format(status)
-                # Weight losses much more heavily than wins
-                score = -score * 10
-        return score
+        multiplier = 0
+        if outcome > 0:
+            multiplier = 1
+        elif outcome < 0:
+            multiplier = -10
+
+        return score * multiplier

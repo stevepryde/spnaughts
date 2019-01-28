@@ -46,18 +46,15 @@ class LogHandler:
     def __init__(self) -> None:
         """
         Create new LogHandler object.
-
-        :param filename: The filename for the log file, including full path.
-        :param console_logging: True if the log should also write to the
-            console.
+        
+        By default the LogHandler does no logging. 
+        All calls to log functions are no-ops.
+        To enable logging, call log_to_file() or log_to_console().
         """
         self.name = str(uuid.uuid4().hex)  # Unique internal log name.
         self.filename = None  # type: Optional[str]
         self.file_logging = False
         self.console_logging = False
-
-        # Log in memory if no console or file configured.
-        self.log_lines = []  # type: List[str]
 
         # Create formatter and add it to the handlers.
         self.formatter = logging.Formatter(
@@ -66,7 +63,7 @@ class LogHandler:
         return
 
     @property
-    def is_configured(self) -> bool:
+    def is_enabled(self) -> bool:
         """Return True if logging has been activated."""
         return self.file_logging or self.console_logging
 
@@ -110,25 +107,27 @@ class LogHandler:
 
     def set_as_default(self) -> None:
         """Set this as the default logger."""
+        assert self.is_enabled, "Cannot set default logger if no file/console logging is enabled"
         set_default_log(self)
         return
 
     def get_log_obj(self) -> Optional[logging.Logger]:
         """Get the logger object."""
+        if not self.is_enabled:
+            return None
+
         return logging.getLogger(self.name)
 
     def log_it(self, text: str, loglevel: str) -> None:
         """Write the text to the log at the specified log level."""
         logobj = self.get_log_obj()
 
-        lines = get_lines(text)
-        if logobj:
-            for line in lines:
-                func = getattr(logobj, loglevel)
-                func(line)
-        else:
-            for line in lines:
-                self.log_lines.append("{}: {}".format(loglevel, line))
+        if not logobj:
+            return
+
+        for line in get_lines(text):
+            func = getattr(logobj, loglevel)
+            func(line)
         return
 
     def trace(self, text: str) -> None:

@@ -67,25 +67,25 @@ currently.
 
 
 import random
+from typing import Any, Dict
 
-
-from games.naughts.bots.bot_base import NaughtsBot
+from games.naughts.board import Board
 from games.naughts.bots.genbot1 import nodes
+from games.naughts.bots.naughtsbot import NaughtsBot
 
 
-class GENBOT1(NaughtsBot):
-    """The first genetic bot attempted."""
+class GenBot1(NaughtsBot):
+    """My first genetic bot attempted."""
 
     def __init__(self, *args, **kwargs):
-        """Create new GENBOT1."""
+        """Create new GenBot1."""
         super().__init__(*args, **kwargs)
         self.genetic = True
         self.nodes = []
         self.output_nodes = []
         return
 
-    @property
-    def recipe(self):
+    def get_recipe(self) -> str:
         """Get the recipe for this bot."""
         recipe_blocks = []
         nodelist = list(self.nodes)
@@ -101,15 +101,14 @@ class GENBOT1(NaughtsBot):
 
         return ",".join(recipe_blocks)
 
-    def to_dict(self):
-        """Serialise."""
-        self.set_data("recipe", self.recipe)
-        return super().to_dict()
+    def get_state(self) -> Dict[str, Any]:
+        """Save bot data."""
+        return {"recipe": self.get_recipe()}
 
-    def from_dict(self, data_dict):
-        """Load data and metadata from dict."""
-        super().from_dict(data_dict)
-        self.create_from_recipe(self.get_data("recipe"))
+    def set_state(self, state: Dict[str, Any]) -> None:
+        """Load bot from previous state."""
+        recipe = state["recipe"]
+        self.create_from_recipe(recipe)
         return
 
     def create(self):
@@ -117,8 +116,6 @@ class GENBOT1(NaughtsBot):
 
         Create new brain consisting of random nodes.
         """
-        self.log_trace("Creating brain")
-
         self.nodes = []
         self.output_nodes = []
 
@@ -133,10 +130,8 @@ class GENBOT1(NaughtsBot):
             # Create a random node.
             node = self.get_random_node_instance()
             node.index = n
-
             # Connect up a random sample of input nodes.
             node.input_nodes = random.sample(self.nodes, node.num_inputs)
-
             # Add this node.
             self.nodes.append(node)
 
@@ -144,15 +139,13 @@ class GENBOT1(NaughtsBot):
         for n in range(9):
             # Create output node.
             node = nodes.NODE_OUTPUT()
-
             node.input_nodes = random.sample(self.nodes, node.num_inputs)
-
             self.output_nodes.append(node)
 
         # And we're done.
         return
 
-    def create_from_recipe(self, recipe):
+    def create_from_recipe(self, recipe: str) -> None:
         """Create new bot from recipe."""
         self.nodes = []
         self.output_nodes = []
@@ -180,7 +173,7 @@ class GENBOT1(NaughtsBot):
                 node_index += 1
         return
 
-    def mutate(self):
+    def mutate(self) -> None:
         """Mutate the bot."""
         mutable_nodes = []
         for node in self.nodes:
@@ -195,9 +188,9 @@ class GENBOT1(NaughtsBot):
         node.input_nodes = []
         for num in input_numbers:
             node.input_nodes.append(self.nodes[num])
-        return self
+        return
 
-    def get_random_node_instance(self):
+    def get_random_node_instance(self) -> nodes.NodeBase:
         """Create random node instance."""
         nodepool = ["NOT", "AND", "OR", "XOR", "NAND", "NOR", "XNOR"]
 
@@ -206,10 +199,9 @@ class GENBOT1(NaughtsBot):
         instance = class_()
         return instance
 
-    def do_turn(self, game_obj):
+    def do_turn(self, current_board: Board):
         """Do one turn."""
-        current_board = game_obj
-        moves = self.get_possible_moves(current_board)
+        moves = current_board.get_possible_moves()
 
         # First, win the game if we can.
         straight_sequences = ["012", "345", "678", "036", "147", "258", "048", "246"]
@@ -239,8 +231,6 @@ class GENBOT1(NaughtsBot):
                 return 0
 
         # ENGAGE BRAIN
-        self.log_trace("Engaging brain")
-
         # Populate input nodes with the current board state.
         for p in range(9):
             self.nodes[p].set_value(current_board.getat(p) == " ")
@@ -252,19 +242,14 @@ class GENBOT1(NaughtsBot):
         their_id = self.other_identity
         for p in range(9):
             self.nodes[p + 18].set_value(current_board.getat(p) == their_id)
-        self.log_trace("Input nodes are populated")
 
         # Now process the brain.
         for index in range(27, len(self.nodes)):
             self.nodes[index].update()
 
-        self.log_trace("Brain has been processed")
-
         # And finally process the output nodes.
         for node in self.output_nodes:
             node.update()
-
-        self.log_trace("Output nodes have been processed")
 
         # Now sort moves according to the value of the output nodes.
         dsort = {}
@@ -273,5 +258,4 @@ class GENBOT1(NaughtsBot):
 
         sorted_moves = sorted(dsort, key=dsort.__getitem__, reverse=True)
         return int(sorted_moves[0])
-
         # END OF BRAIN ENGAGEMENT
