@@ -45,7 +45,7 @@ class GenBot2(NaughtsBot):
         self.create_from_recipe(recipe)
         return
 
-    def create(self):
+    def create(self, game_info: Dict[str, Any]) -> None:
         """Create a new GENBOT2, using the specified config.
 
         Create new brain consisting of random nodes.

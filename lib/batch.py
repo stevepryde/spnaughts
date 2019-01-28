@@ -13,7 +13,6 @@ from lib.gamecontext import GameContext
 from lib.gamefactory import GameFactory
 from lib.gameplayer import GamePlayer
 from lib.gameresult import GameResult
-from lib.globals import time_this
 
 P1_WINS = 1
 P2_WINS = 2

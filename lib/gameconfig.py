@@ -102,7 +102,6 @@ class GameConfig:
             default=0,
             help="Batch mode. Specify the number of games to " "run",
         )
-        parser.add_argument("--stoponloss", help="Stop if the specified player loses")
         parser.add_argument(
             "--genetic",
             type=check_int1plus,
@@ -173,7 +172,7 @@ class GameConfig:
 
     def init_logging(self) -> None:
         """Set up logging functionality."""
-        self.log_base_dir = os.path.join(self.base_path, LOG_BASE_PATH, "games", str(self.game))
+        self.log_base_dir = os.path.join(self.base_path, LOG_BASE_PATH, str(self.game))
 
         try:
             os.makedirs(self.log_base_dir, exist_ok=True)

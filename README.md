@@ -3,48 +3,46 @@
 SP Naughts is a simple naughts and crosses "game" including a collection of
 AI bots.
 
-It is a WIP and about to receive a major overhaul.
+It is intended to be a sandbox for testing AI / machine learning algorithms.
+Only naughts and crosses is implemented for now, but additional games will be
+added in future, for example connect 4.
 
 ## Run games using game_runner.py:
 
     $ ./game_runner.py -h
-    usage: game_runner.py [-h] [--batch BATCH] [--stoponloss STOPONLOSS]
-                          [--genetic GENETIC] [--samples SAMPLES] [--keep KEEP]
-                          [--custom CUSTOM] [--loggames]
-                          robot1 robot2
+    usage: game_runner.py [-h] --game GAME [--batch BATCH] [--genetic GENETIC]
+                      [--samples SAMPLES] [--keep KEEP] [--botid BOTID]
+                      bot1 bot2
 
     Game Runner
 
     positional arguments:
-      robot1                First robot, e.g. "human"
-      robot2                Second robot
+      bot1               First bot, e.g. "human"
+      bot2               Second bot
 
     optional arguments:
-      -h, --help            show this help message and exit
-      --batch BATCH         Batch mode. Specify the number of games to run
-      --stoponloss STOPONLOSS
-                            Stop if the specified player loses
-      --genetic GENETIC     Genetic mode. Specify number of generations to run
-                            (Requires --batch)
-      --samples SAMPLES     Number of samples per generation. (Requires --genetic)
-      --keep KEEP           Number of winning samples to "keep" (Requires
-                            --genetic)
-      --custom CUSTOM       Custom argument (passed to bot)
-      --loggames            Also log individual games (may require a lot of disk
-                            space!)
+      -h, --help         show this help message and exit
+      --game GAME        The game to run
+      --batch BATCH      Batch mode. Specify the number of games to run
+      --genetic GENETIC  Genetic mode. Specify number of generations to run
+                        (Requires --batch)
+      --samples SAMPLES  Number of samples per generation. (Requires --genetic)
+      --keep KEEP        Number of winning samples to "keep" (Requires --genetic)
+      --botid BOTID      Play against this bot id (genetic)
 
-You need to specify two robots, followed by optional arguments.
+You need to specify two robots, along with some additional arguments.
 
-The robot names are simply the directory names of the robots. Look in the
-robots/ directory to find them.
+The robot names are simply the directory names of the bots.
+Game-specific bots can be found in games/naughts/bots/.
+Game-agnostic bots can be found in bots/.
 
-The first robot is always X, and will make the first move.
+The first bot specified is always X, and will make the first move.
 
 ## SINGLE MODE
 
 For example:
 
-    $ ./game_runner.py randombot human
+    $ ./game_runner.py --game naughts randombot naughts.human
 
 This will run a single game where randombot plays against a human player.
 
@@ -52,7 +50,8 @@ NOTE: Because the human 'bot' receives input from STDIN, it is not practical
 to run the human player in anything other than single game mode.
 
 Game log files are output into the logs/ directory. This directory will be
-created if it does not exist.
+created if it does not exist. Logging is quite minimal at the moment,
+although logging functionality is supported and ready to use by games.
 
 ## BATCH MODE
 
@@ -60,22 +59,21 @@ Use the --batch option to run a batch of games in a row.
 
 For example:
 
-    $ ./game_runner.py randombot simplebot --batch 1000
+    $ ./game_runner.py randombot naughts.simplebot --game naughts --batch 1000
 
 This will run a batch of 1000 games and then output a summary at the end.
 
 ## GENETIC MODE
 
-This is the mode used to run bots based on a genetic algorithm. One and only
-one of the bots must be a genetic bot to run in this mode.
+This is the mode used to run bots based on a genetic algorithm.
 
 For example:
 
-    $ ./game_runner.py randombot genbot1 --batch 1000 --samples 50 --genetic 10
+    $ ./game_runner.py randombot naughts.genbot1 --game naughts --batch 100 --samples 50 --genetic 10
 
 This will run the randombot (as 'X') against the genbot1 (as 'O'), over 10
 generations. Each generation will have 50 samples. Each 'sample' will execute
-a batch of 1000 games before receiving an overall score (the average). The
+a batch of 100 games before receiving an overall score (the average). The
 highest scoring sample will be selected and another 50 samples generated
 (or mutated) from that winning sample. This is the second generation.
 If no sample scores higher than the previous generation, the samples are
@@ -83,24 +81,31 @@ regenerated from the previous generation's winner and the process is repeated.
 At present this can result in never-ending games, so it pays to know what you're
 looking for.
 
-All game logs are output in logs/games/, including genetic bot 'recipes'.
+If two genetic bots are specified, only the first will have the genetic algorithm
+applied to it. The other will behave as a static bot, unchanged from one game
+to the next.
 
-To run a single game or batch against a particular recipe or to start a genetic
-mode run from an existing recipe, simply copy the recipe from the relevant log
-and paste it into its own file. Then supply that file on the CLI as follows:
-
-    $ ./game_runner.py randombot genbot1 --batch 1000 --custom recipefile:/path/to/file
-
-This will run a batch of 1000 games with randombot against a genbot1 that is
-loaded from the particular recipe that has been supplied.
+Top-scoring bots will be saved to a mongoDB instance if one is available, and can
+be retrieved and replayed using the --botid command-line option.
 
 ## ROBOTS
 
 The interesting 'bots' included are as follows:
 
+### Game-independent bots (these will run against future games unmodified)
+
 - randombot
   Just chooses from the available moves at random. Very useful for training
   or testing other bots (in batch mode or genetic mode).
+- nbot1
+  My first attempt at a neural network. There is no back-propagation since
+  it uses a genetic algorithm instead to mutate it over time. This is obviously
+  much less efficient but requires far less knowledge of the game being
+  "learned". The code is intentionally verbose to make it easier to read.
+  Once it is working it can be optimised for performance using numpy.
+
+### Game-dependent bots (these will only run against naughts)
+
 - human
   This one accepts input from STDIN, allowing you to play manual games against
   any other bot.
@@ -109,8 +114,8 @@ The interesting 'bots' included are as follows:
   simple intuitive rules.
 - minimaxbot
   A bot that uses the minimax algorithm (with alpha-beta optimisation). This
-  will always produce the optimal outcome, and is thus useful for testing
-  and training other bots.
+  will always produce the optimal outcome, and is thus useful for benchmarking
+  other bots.
 - genbot1
   My first attempt at a genetic algorithm. It uses boolean logic nodes
   assembled at random. See the documentation in the python source file for
@@ -128,58 +133,32 @@ The interesting 'bots' included are as follows:
   right training it should be able to improve considerably. How much improvement
   is possible is still yet to be determined.
 - omnibot
-  Perhaps the most important bot for AI training purposes. This bot will cover
-  every possible path, when used with the new --batch=0 option. It basically
-  just returns every possible move as a list, which tells the batch runner to
-  clone the current game, spawning a 'new' game (with the current game state)
-  for each available move. The number of games in the batch is the total number
-  of possible games, which is dependent on the other bot (some games may always
-  end early).
-
-There are a couple of other bots included as well, that I used for testing.
-See the documentation at the top of each source file for more details.
+  Omnibot is a special bot that, when combined with a magic batch runner,
+  effectively produced a kind of british-museum algorithm for running every
+  possible game against a bot. At each turn, the board is cloned once for
+  every possible move, and the clones added to a stack. When the stack has
+  been fully processed, every possible game has been played.
+  Omnibot was deleted due to a recent refactor but the functionality it
+  provided will return in a future update.
 
 ## FUTURE
 
-This software has gotten more complicated than I'd like. The decision to put
-all major objects inside a GameContext was intended to automatically set up
-subdirectories and logging where appropriate, but it also added complexity.
+This project has recently undergone a major refactor to hopefully allow much
+more future expansion.
 
-The software is due for a design overhaul on the engine side of things.
+Batches should now be much less dependent on bulky objects, to make way for
+better parallelism. I'd like to try pushing batches onto a queue and then
+processing them from a pool of machines, ideally docker containers. This will
+significantly improve processing performance and allow much larger sample
+sizes.
 
-First, the setup needs a shuffle. I think at the very top layer should be
-the game object, and the bots themselves, or at least factories of them.
-Currently the game object is instantiated inside the runner or batch, which
-feels weird, and too deep in the guts of what is going on.
-
-The game object and bots should be created up front, and then be supplied to
-the particular runner, which just executes the game in a generic way.
-
-To do this, there needs to be a separation between the game instance data / state,
-and the game logic. The top level game object could be a game instance factory
-that can dish up new clean game / data instances.
-
-Aside from all of this, the actual batch processing currently touches far too
-much code. I'm hitting performance bottlenecks trying to process batches, so
-in order to improve performance the obvious option is to parallelise things.
-But this requires moving batch processing into other processes and eventually
-even other machines. In order to do that, batches need to be much leaner in
-terms of what info they need passed in, and what they send back.
-
-Then once it goes fully parallel, there is the discussion of how to move batch
-info back and forth between the server and the workers. One option is a queue
-such as rabbitmq. Another is websockets. Some experimentation will be required.
-
-In terms of games, nbot1 is an early neural net approach, which is showing
-some promise but really needs to run for many more generations to reach its
-potential. Thus the performance focus.
+Omnibot has been temporarily removed, but its functionality will be restored
+in a future update.
 
 Once I have a nice neural net bot that can learn and self-improve, the longer
 term goal is to implement more games. Connect four will be the obvious next
-choice. Ideally the game interface will be adjusted so that the inputs and
-outputs can be more generic, and thus the neural net bot can be made somewhat
-generic too. So long as we have inputs, outputs, and a score (fitness function),
-it should just work. Fingers crossed.
+choice. Nbot1 and randombot are now fully generic so hopefully they will work
+against future games without any modification to their code.
 
 That's all for now.
 
