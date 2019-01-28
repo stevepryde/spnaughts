@@ -1,8 +1,11 @@
 """Insert bots into database."""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from pymongo import MongoClient, ASCENDING, DESCENDING
+from pymongo.errors import ConnectionFailure
+from bson.objectid import ObjectId
+from bson.errors import InvalidId
 
 
 class BotDB:
@@ -11,6 +14,9 @@ class BotDB:
     def __init__(self) -> None:
         """Create a new BotDB object."""
         self.client = MongoClient()
+        # Check for connection - this will raise a ConnectionFailure if
+        # the connection fails, which will be caught upstream.
+        self.client.admin.command("ismaster")
         self.db = self.client.botdb
         self.db.bots.create_index([("name", ASCENDING)])
         self.db.bots.create_index([("name", ASCENDING), ("score", DESCENDING)])
@@ -22,9 +28,12 @@ class BotDB:
             {"name": bot_name, "bot": bot_dict, "score": score}
         ).inserted_id
 
-    def load_bot(self, bot_id: str) -> Dict[str, Any]:
+    def load_bot(self, bot_id: str) -> Optional[Dict[str, Any]]:
         """Get bot by id."""
-        return self.db.bots.find_one({"_id": bot_id})
+        try:
+            return self.db.bots.find_one({"_id": ObjectId(bot_id)})
+        except InvalidId:
+            return None
 
     def get_top(self, bot_name: str, count: int) -> List[Dict[str, Any]]:
         """Get top scoring bots."""

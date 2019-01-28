@@ -20,7 +20,7 @@ COLOURS = {
     "trace": "yellow",
     "debug": "orange",
     "info": "green",
-    "warning": "blue",
+    "warning": "cyan",
     "error": "magenta",
     "critical": "red",
 }

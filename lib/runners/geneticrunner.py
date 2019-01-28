@@ -11,11 +11,9 @@ from lib.gamefactory import GameFactory
 from lib.gameplayer import GamePlayer
 from lib.runners.gamerunnerbase import GameRunnerBase
 from lib.runners.genetic.processor import Processor, ProcessorMP
-from lib.support.botdb import BotDB
+from lib.support.botdb import BotDB, ConnectionFailure
 
 MAX_SCORE = 7.0
-
-db = BotDB()
 
 
 class GeneticRunner(GameRunnerBase):
@@ -24,6 +22,16 @@ class GeneticRunner(GameRunnerBase):
     def __init__(self, config: GameConfig) -> None:
         """Create new GeneticRunner."""
         super().__init__(config)
+        self.db = None
+        if config.botdb:
+            try:
+                self.db = BotDB()
+            except ConnectionFailure:
+                self.log.warning(
+                    "Error connecting to MongoDB. BotDB will be disabled for this run."
+                )
+                self.db = None
+
         self.bots = []  # type: List[GamePlayer]
         self.genetic_bot_index = 0
         self.genetic_index = 0
@@ -108,9 +116,10 @@ class GeneticRunner(GameRunnerBase):
 
                 selected_scores.append("{:.3f}".format(score))
 
-                # Add to DB.
-                bot_id = db.insert_bot(bot_name, sample.to_dict(), score)
-                self.log.info("SCORE {} :: {}".format(score, bot_id))
+                # Add to DB, if enabled.
+                if self.db:
+                    bot_id = self.db.insert_bot(bot_name, sample.to_dict(), score)
+                    self.log.info("SCORE {} :: {}".format(score, bot_id))
 
             self.log.info(
                 "Generation {} highest scores: [{}]".format(gen, ", ".join(selected_scores))
