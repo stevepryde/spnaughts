@@ -12,6 +12,7 @@ pylint = "*"
 black = "*"
 rainbow-logging-handler = "*"
 pymongo = "*"
+pika = "*"
 
 [requires]
 python_version = "3.7"

@@ -65,6 +65,7 @@ class GamePlayer(GameContext):
     def to_dict(self) -> Dict[str, Any]:
         """Get full bot state. Subclasses should override get_state() instead."""
         state = self.data
+        state["name"] = self.name
         state.update(self.get_state())
         return state
 
