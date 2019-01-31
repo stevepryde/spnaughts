@@ -2,12 +2,13 @@
 
 import multiprocessing
 import time
-from typing import Any, Dict, Iterable, Iterator, List
+from typing import Any, Dict, Iterable, Iterator, List, Union
 
 from lib.batch import Batch
 from lib.gamecontext import GameContext
 from lib.gameplayer import GamePlayer
-from lib.runners.genetic.batchworker import BatchWorker
+from lib.runners.genetic.batchworker import BatchWorker, BatchWorkerIsolated
+from .rabbit import QUEUE_START, QUEUE_STOP, rabbit
 
 
 class Processor:
@@ -29,7 +30,7 @@ class Processor:
 
     def run(
         self, samples: Iterable[GamePlayer], generation_index: int, score_threshold: float
-    ) -> Iterator[Batch]:
+    ) -> Iterator[Dict[str, Any]]:
         """
         Process the specified samples.
 
@@ -55,8 +56,6 @@ class Processor:
             genetic_identity = batch.identities[self.genetic_index]
             genetic_score = batch_result.get_score(genetic_identity)
             batch.info["genetic_score"] = genetic_score
-            batch.bots[self.genetic_index].score = genetic_score
-            batch.info["bot_data"] = batch.bots[self.genetic_index].to_dict()
 
             win = ""
             if genetic_score > score_threshold:
@@ -68,7 +67,10 @@ class Processor:
                 )
             )
 
-            yield batch
+            yield {
+                "bot_data": batch.bots[self.genetic_index].to_dict(),
+                "genetic_score": genetic_score,
+            }
         return
 
 
@@ -94,7 +96,7 @@ class ProcessorMP(Processor):
 
     def run(
         self, samples: Iterable[GamePlayer], generation_index: int, score_threshold: float
-    ) -> Iterator[Batch]:
+    ) -> Iterator[Dict[str, Any]]:
         """
         Process the specified samples.
 
@@ -104,11 +106,13 @@ class ProcessorMP(Processor):
 
         # Set up the batch queue and worker threads.
         workers = []
-        worker_inputs = {}  # type: Dict[int, List[Batch]]
-        q_out = multiprocessing.Queue()  # type: multiprocessing.Queue[Batch]
+        worker_inputs = {}  # type: Dict[int, List[Union[Batch, Dict[str, Any]]]]
+        q_out = multiprocessing.Queue()  # type: multiprocessing.Queue[Dict[str, Any]]
 
         for i in range(self.num_workers):
             worker_inputs[i] = []
+
+        use_rabbit = False
 
         for index, sample in enumerate(samples):
             if self.genetic_index == 0:
@@ -116,32 +120,107 @@ class ProcessorMP(Processor):
             else:
                 bot_list = [self.other_bot, sample]
 
-            batch = Batch(bots=bot_list, batch_config=self.batch_config)
-            batch.label = "Gen {} - Sample {}".format(generation_index, index)
-            batch.info = {
-                "generation": generation_index,
-                "sample": index,
-                "index": self.genetic_index,
-            }
-
             qindex = index % self.num_workers
-            worker_inputs[qindex].append(batch)
+
+            if use_rabbit:
+                worker_inputs[qindex].append(
+                    {
+                        "sample": index,
+                        "bot_data": [x.to_dict() for x in bot_list],
+                        "genetic_index": self.genetic_index,
+                        "batch_config": self.batch_config,
+                    }
+                )
+            else:
+                batch = Batch(bots=bot_list, batch_config=self.batch_config)
+                batch.label = "Gen {} - Sample {}".format(generation_index, index)
+                batch.info = {
+                    "generation": generation_index,
+                    "sample": index,
+                    "index": self.genetic_index,
+                }
+
+                qindex = index % self.num_workers
+                worker_inputs[qindex].append(batch)
 
         for qid in range(self.num_workers):
+            # worker = BatchWorkerIsolated(worker_inputs[qid], q_out, score_threshold)
             worker = BatchWorker(worker_inputs[qid], q_out, score_threshold)
             worker.start()
             workers.append(worker)
 
         workers_finished = 0
         while workers_finished < len(workers):
-            batch = q_out.get()
-            if batch is None:
+            batch_result = q_out.get()
+            if batch_result is None:
                 workers_finished += 1
                 continue
 
-            yield batch
+            yield batch_result
 
         for worker in workers:
             worker.join()
+        return
+
+
+class ProcessorRabbit(Processor):
+    """
+    RabbitMQ batch distributor.
+    
+    This one places batches onto the queue and waits for their responses.    
+    """
+
+    def run(
+        self, samples: Iterable[GamePlayer], generation_index: int, score_threshold: float
+    ) -> Iterator[Dict[str, Any]]:
+        """
+        Process the specified samples by farming them out to rabbitmq.
+
+        This is also a generator, allowing for the processed batches to be
+        collected as we go.
+        """
+        count = 0
+        for index, sample in enumerate(samples):
+            if self.genetic_index == 0:
+                bot_list = [sample, self.other_bot]
+            else:
+                bot_list = [self.other_bot, sample]
+
+            # batch = Batch(bots=bot_list, batch_config=self.batch_config)
+            # batch.label = "Gen {} - Sample {}".format(generation_index, index)
+            # batch.info = {
+            #     "generation": generation_index,
+            #     "sample": index,
+            #     "index": self.genetic_index,
+            # }
+
+            rabbit.put_on_queue(
+                QUEUE_START,
+                {
+                    "bot_data": [x.to_dict() for x in bot_list],
+                    "genetic_index": self.genetic_index,
+                    "batch_config": self.batch_config,
+                    "score_threshold": score_threshold,
+                },
+            )
+            count += 1
+
+        for _ in range(count):
+            result = None
+            # How long should 1 result take?
+            timeout = time.monotonic() + 60
+            while time.monotonic() < timeout:
+                result = rabbit.get_from_queue(QUEUE_STOP)
+                if not result:
+                    time.sleep(0.5)
+                    continue
+                break
+
+            if not result:
+                raise TimeoutError("Timed out waiting for batch results")
+
+            tag, body = result
+            yield body
+            rabbit.done_message(tag)
         return
 

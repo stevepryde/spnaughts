@@ -71,7 +71,9 @@ class BotFactory:
         """Create new bot object."""
         class_type = self._get_bot_class(module_name)
         assert class_type, "Invalid class"
-        return self.create_bot_from_class(class_type)
+        bot = self.create_bot_from_class(class_type)
+        bot.name = module_name
+        return bot
 
     def create_bot_from_class(self, class_type: Callable) -> GamePlayer:
         """Create new bot object from class."""

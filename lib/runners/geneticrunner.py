@@ -10,7 +10,7 @@ from lib.gameconfig import GameConfig
 from lib.gamefactory import GameFactory
 from lib.gameplayer import GamePlayer
 from lib.runners.gamerunnerbase import GameRunnerBase
-from lib.runners.genetic.processor import Processor, ProcessorMP
+from lib.runners.genetic.processor import Processor, ProcessorMP, ProcessorRabbit
 from lib.support.botdb import BotDB, ConnectionFailure
 
 MAX_SCORE = 7.0
@@ -74,7 +74,7 @@ class GeneticRunner(GameRunnerBase):
         selected_samples = []  # type: List[GamePlayer]
         score_threshold = -999.0  # This will be reset after first round.
 
-        processor = ProcessorMP(
+        processor = ProcessorRabbit(
             context=self,
             other_bot=other_bot,
             genetic_index=self.genetic_index,
@@ -92,12 +92,12 @@ class GeneticRunner(GameRunnerBase):
                 new_samples = self.generate_original_samples(gen)
 
             genetic_pool = []
-            for batch in processor.run(
+            for batch_result in processor.run(
                 samples=new_samples, generation_index=gen, score_threshold=score_threshold
             ):
                 sample = self.bot_factory.create_bot(self.genetic_name)
-                sample.from_dict(batch.info["bot_data"])
-                sample.score = batch.info["genetic_score"]
+                sample.from_dict(batch_result["bot_data"])
+                sample.score = batch_result["genetic_score"]
                 genetic_pool.append(sample)
 
             # Sort the pool based on score, in descending order.
@@ -152,7 +152,7 @@ class GeneticRunner(GameRunnerBase):
                 bot_obj = self.bot_factory.create_bot(self.genetic_name)
 
                 # Name it using the generation and sample number.
-                bot_obj.name = "{}-{}-{}".format(self.genetic_name, generation, s)
+                # bot_obj.name = "{}-{}-{}".format(self.genetic_name, generation, s)
 
                 bot_obj.from_dict(sample.to_dict())
                 bot_obj.mutate()
@@ -172,7 +172,7 @@ class GeneticRunner(GameRunnerBase):
 
             # Name it using the generation and sample number.
             # This is generation 0.
-            bot_obj.name = "{}-{}-{}".format(self.genetic_name, generation, s)
+            # bot_obj.name = "{}-{}-{}".format(self.genetic_name, generation, s)
             bot_obj.create(game_info=class_.get_game_info())
 
             yield bot_obj
