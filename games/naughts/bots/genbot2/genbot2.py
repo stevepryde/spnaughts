@@ -113,13 +113,21 @@ class GenBot2(NaughtsBot):
 
     def mutate(self):
         """Mutate the bot."""
-        mutable_nodes = []
-        for node in self.nodes:
+        mutable_node_indexes = []
+        for index, node in enumerate(self.nodes):
             if not node.input_nodes:
                 continue
-            mutable_nodes.append(node)
+            mutable_node_indexes.append(index)
 
-        node = random.choice(mutable_nodes)
+        node_index = random.choice(mutable_node_indexes)
+        if random.choice([0, 1]):
+            node = self.get_random_node_instance()
+            node.index = node_index
+            self.nodes[node_index] = node
+        else:
+            node = self.nodes[node_index]
+
+        # Also change/set inputs.
         num_inputs = node.num_inputs
 
         input_numbers = random.sample(range(node.index), num_inputs)

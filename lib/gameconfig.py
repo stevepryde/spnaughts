@@ -3,6 +3,7 @@
 from typing import Any, Callable, Dict, List, Type
 
 import argparse
+import binascii
 import importlib
 import os
 import sys
@@ -56,6 +57,8 @@ class GameConfig:
 
     def __init__(self, base_path: str) -> None:
         """Create a new GameConfig object."""
+        # Game ID is a randomly generated 32-character hex string.
+        self.game_id = binascii.b2a_hex(os.urandom(16)).decode("utf-8")
         self.base_path = base_path
         self.game = ""
         self.silent = False
@@ -199,6 +202,7 @@ class GameConfig:
             "batch_size": self.batch_size,
             "bot_config": self.get_bot_config(),
             "game": self.game,
+            "game_id": self.game_id,
         }
 
     def get_bot_config(self) -> Dict[str, Any]:

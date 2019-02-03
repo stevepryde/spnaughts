@@ -1,0 +1,7 @@
+# Compose file for rabbitmq batch workers.
+version: "3"
+services:
+  rabbitworker:
+    build: .
+    network_mode: "host"
+    restart: unless-stopped
