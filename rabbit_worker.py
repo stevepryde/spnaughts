@@ -6,14 +6,24 @@ import os
 import sys
 import time
 
-from lib.runners.genetic.rabbit import RabbitManager
+from lib.runners.genetic.rabbit import RabbitDisabledError, RabbitManager
 from lib.runners.genetic.rabbitbatchworker import run_one_batch
 
 
 def consume():
-    rabbit = RabbitManager(host=os.environ["SPNAUGHTS_RABBIT"])
-    if not rabbit.enabled:
+    print("Connecting to rabbit...")
+    try:
+        rabbit = RabbitManager(
+            host=os.environ.get("SPNAUGHTS_RABBIT"),
+            username=os.environ.get("SPNAUGHTS_USERNAME"),
+            password=os.environ.get("SPNAUGHTS_PASSWORD"),
+        )
+    except RabbitDisabledError:
         print("ERROR: Rabbit connection failed")
+        return
+
+    if not rabbit.enabled:
+        print("ERROR: Rabbit connection failed: {}".format(rabbit.error))
         return
     print("Rabbit connected at {}".format(rabbit.host))
 
@@ -51,21 +61,24 @@ if __name__ == "__main__":
         except (ValueError, KeyError):
             num_workers = multiprocessing.cpu_count() - 2
 
-    if num_workers > multiprocessing.cpu_count() - 2:
-        num_workers = multiprocessing.cpu_count() - 2
+    if num_workers > multiprocessing.cpu_count() - 1:
+        num_workers = multiprocessing.cpu_count() - 1
 
     if num_workers < 1:
         num_workers = 1
 
     print("Workers: {}".format(num_workers))
-    pool = multiprocessing.Pool(processes=num_workers)
+    processes = []
     for _ in range(num_workers):
-        pool.apply_async(consume)
+        p = multiprocessing.Process(target=consume)
+        p.start()
+        processes.append(p)
 
     try:
-        pool.close()
-        pool.join()
+        # Wait for workers to exit (i.e. on failure)
+        for p in processes:
+            p.join()
     except KeyboardInterrupt:
         print("Cancelled.")
-        pool.terminate()
-        pool.join()
+        for p in processes:
+            p.terminate()

@@ -1,6 +1,7 @@
 """RabbitMQ manager."""
 
 import json
+import socket
 from typing import Any, Callable, Dict, Optional, Tuple
 
 import pika
@@ -18,18 +19,22 @@ class RabbitDisabledError(Exception):
 class RabbitManager:
     """RabbitMQ manager for setting up and interacting with the queues."""
 
-    def __init__(self, host: str = "localhost") -> None:
+    def __init__(self, host: str = "", username: str = "", password: str = "") -> None:
         """Create RabbitManager object."""
         self._conn = None  # type: Optional[pika.BlockingConnection]
         self._channel = None  # type: Optional[pika.adapters.blocking_connection.BlockingChannel]
 
         self.host = host or "localhost"
+        self.username = username or "spnaughts"
+        self.password = password or "spnaughts"
 
         self.enabled = True
+        self.error = ""
         try:
             self.init_queues()
-        except pika.exceptions.AMQPConnectionError:
+        except (pika.exceptions.AMQPConnectionError, socket.gaierror) as exc:
             self.enabled = False
+            self.error = str(exc)
         return
 
     @property
@@ -39,7 +44,12 @@ class RabbitManager:
             raise RabbitDisabledError("Rabbit is disabled")
 
         if not self._conn:
-            self._conn = pika.BlockingConnection(pika.ConnectionParameters(self.host))
+            credentials = pika.credentials.PlainCredentials(
+                username=self.username, password=self.password
+            )
+            self._conn = pika.BlockingConnection(
+                pika.ConnectionParameters(host=self.host, credentials=credentials)
+            )
         return self._conn
 
     @property

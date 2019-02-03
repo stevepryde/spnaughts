@@ -2,6 +2,7 @@
 
 
 import json
+import os
 import time
 from typing import Callable, Iterator, List, Optional
 
@@ -137,6 +138,8 @@ class GeneticRunner(GameRunnerBase):
             self.log.info(
                 "Generation {} highest scores: [{}]".format(gen, ", ".join(selected_scores))
             )
+            with open(os.path.join(self.path, "scores.csv"), "a") as f:
+                f.write("{},{}\n".format(gen, selected_scores[0]))
 
         end_time = time.monotonic()
         duration = end_time - start_time
