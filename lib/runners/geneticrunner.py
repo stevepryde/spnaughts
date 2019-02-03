@@ -11,6 +11,7 @@ from lib.gamefactory import GameFactory
 from lib.gameplayer import GamePlayer
 from lib.runners.gamerunnerbase import GameRunnerBase
 from lib.runners.genetic.processor import Processor, ProcessorMP, ProcessorRabbit
+from lib.runners.genetic.rabbit import RabbitManager
 from lib.support.botdb import BotDB, ConnectionFailure
 
 MAX_SCORE = 7.0
@@ -37,6 +38,7 @@ class GeneticRunner(GameRunnerBase):
         self.genetic_index = 0
         self.genetic_name = ""
         self.bot_factory = BotFactory(context=self, bot_config=self.config.get_bot_config())
+        self.rabbit = RabbitManager()
         return
 
     def setup(self) -> None:
@@ -79,6 +81,7 @@ class GeneticRunner(GameRunnerBase):
             other_bot=other_bot,
             genetic_index=self.genetic_index,
             batch_config=self.config.get_batch_config(),
+            rabbit=self.rabbit,
         )
 
         for gen in range(self.config.num_generations):
@@ -99,6 +102,16 @@ class GeneticRunner(GameRunnerBase):
                 sample.from_dict(batch_result["bot_data"])
                 sample.score = batch_result["genetic_score"]
                 genetic_pool.append(sample)
+
+                win = ""
+                if sample.score > score_threshold:
+                    win = "*"
+
+                self.log.info(
+                    "Completed batch for sample {:5d} :: score = {:.3f} {}".format(
+                        batch_result["sample"], sample.score, win
+                    )
+                )
 
             # Sort the pool based on score, in descending order.
             sorted_pool = sorted(genetic_pool, key=lambda bot: bot.score, reverse=True)
@@ -148,14 +161,15 @@ class GeneticRunner(GameRunnerBase):
             # scenario where all offspring are less-advantaged.
             yield sample
 
-            for s in range(1, self.config.num_samples):
+            for _ in range(1, self.config.num_samples):
                 bot_obj = self.bot_factory.create_bot(self.genetic_name)
 
-                # Name it using the generation and sample number.
-                # bot_obj.name = "{}-{}-{}".format(self.genetic_name, generation, s)
-
-                bot_obj.from_dict(sample.to_dict())
+                sample_data = sample.to_dict()
+                bot_obj.from_dict(sample_data)
+                assert bot_obj.to_dict() == sample_data, "New sample not identical to old sample!"
                 bot_obj.mutate()
+                if bot_obj.to_dict() == sample_data:
+                    self.log.warning("Sample did not mutate")
                 yield bot_obj
         return
 
@@ -163,16 +177,13 @@ class GeneticRunner(GameRunnerBase):
         """Generate samples from scratch."""
         # Start from scratch, just create random bots.
         class_ = GameFactory(self).get_game_class(self.config.game)
-        for s in range(1, self.config.num_samples + 1):
+        for _ in range(1, self.config.num_samples + 1):
             bot_obj = self.bot_factory.create_bot(self.genetic_name)
 
             if not bot_obj:
                 self.log.critical("Error instantiating bot '{}'".format(self.genetic_name))
                 return
 
-            # Name it using the generation and sample number.
-            # This is generation 0.
-            # bot_obj.name = "{}-{}-{}".format(self.genetic_name, generation, s)
             bot_obj.create(game_info=class_.get_game_info())
 
             yield bot_obj

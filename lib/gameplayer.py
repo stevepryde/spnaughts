@@ -64,15 +64,15 @@ class GamePlayer(GameContext):
 
     def to_dict(self) -> Dict[str, Any]:
         """Get full bot state. Subclasses should override get_state() instead."""
-        state = self.data
+        state = copy.deepcopy(self.data)
+        state.update(copy.deepcopy(self.get_state()))
         state["name"] = self.name
-        state.update(self.get_state())
         return state
 
     def from_dict(self, state: Dict[str, Any]) -> None:
         """Load state from dict. Subclasses should override set_state() instead."""
         self.data = copy.deepcopy(state)
-        self.set_state(state)
+        self.set_state(self.data)
         return
 
     def get_state(self) -> Dict[str, Any]:

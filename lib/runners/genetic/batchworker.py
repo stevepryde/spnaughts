@@ -39,21 +39,13 @@ class BatchWorker(multiprocessing.Process):
 
                 genetic_identity = batch.identities[genetic_index]
                 genetic_score = batch_result.get_score(genetic_identity)
-
-                win = ""
-                if genetic_score > self.score_threshold:
-                    win = "*"
-
-                print(
-                    "Completed batch for sample {:5d} :: score = {:.3f} {}".format(
-                        batch.info["sample"], genetic_score, win
-                    )
-                )
+                sample_index = batch.info["sample"]
 
                 self.q_out.put(
                     {
                         "bot_data": batch.bots[genetic_index].to_dict(),
                         "genetic_score": genetic_score,
+                        "sample": sample_index,
                     }
                 )
 
