@@ -65,6 +65,8 @@ class GameConfig:
         self.console_logging = False
         self.batch_mode = False
         self.genetic_mode = False
+        self.use_rabbit = False
+        self.magic = False
         self.no_batch_summary = False
         self.batch_size = 1
         self.num_generations = 1
@@ -104,29 +106,40 @@ class GameConfig:
             "--batch",
             type=check_int0plus,
             default=0,
-            help="Batch mode. Specify the number of games to " "run",
+            help="Batch mode. Specify the number of games to run",
+        )
+        parser.add_argument(
+            "--magic",
+            action="store_true",
+            help="Magic Batch mode. Run all possible games against this bot.",
         )
         parser.add_argument(
             "--genetic",
             type=check_int1plus,
-            help="Genetic mode. Specify number of generations " "to run (Requires --batch)",
+            help="Genetic mode. Specify number of generations to run (Requires --batch)",
         )
         parser.add_argument(
             "--samples",
             type=check_int1plus,
-            help="Number of samples per generation. " "(Requires --genetic)",
+            help="Number of samples per generation. (Requires --genetic)",
         )
         parser.add_argument(
             "--keep",
             type=check_int1plus,
-            help='Number of winning samples to "keep" ' "(Requires --genetic)",
+            help='Number of winning samples to "keep" (Requires --genetic)',
         )
         parser.add_argument(
             "--botdb", action="store_true", help="Enable storing and loading bots with BotDB"
         )
         parser.add_argument("--botid", action="store", help="Play against this bot id (genetic)")
+        parser.add_argument("--rabbit", action="store_true", help="Use the RabbitMQ processor")
 
         args = parser.parse_args()
+
+        if args.magic:
+            self.magic = True
+            if args.batch:
+                parser.error("Cannot specify --batch with --magic")
 
         if not args.bot1 or not args.bot2:
             print("You need to specify two bots")
@@ -138,7 +151,7 @@ class GameConfig:
         requires_genetic = ["samples", "keep", "top"]
 
         args_dict = vars(args)
-        if not args.batch:
+        if not args.batch and not self.magic:
             for req in requires_batch:
                 if req in args_dict and args_dict[req]:
                     parser.error("Option --{} requires --batch".format(req))
@@ -156,11 +169,14 @@ class GameConfig:
         self.bot1 = args.bot1
         self.bot2 = args.bot2
 
+        if args.rabbit:
+            self.use_rabbit = True
+
         if args.botdb:
             self.botdb = True
 
-        if args.batch > 0:
-            self.batch_size = int(args.batch)
+        if self.magic or args.batch > 0:
+            self.batch_size = int(args.batch) or 0
             self.batch_mode = True
             self.silent = True
 
@@ -203,6 +219,7 @@ class GameConfig:
             "bot_config": self.get_bot_config(),
             "game": self.game,
             "game_id": self.game_id,
+            "magic": self.magic,
         }
 
     def get_bot_config(self) -> Dict[str, Any]:

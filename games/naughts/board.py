@@ -6,7 +6,7 @@ It consists of 9 characters,
 - = blank space. X and O are represented by exactly those letters (uppercase).
 """
 
-from typing import List
+from typing import Any, Dict, List
 
 
 class Board:
@@ -15,6 +15,15 @@ class Board:
     def __init__(self) -> None:
         """Create a new Board object."""
         self.data = "---------"
+        return
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dict."""
+        return {"data": self.data}
+
+    def from_dict(self, d: Dict[str, Any]) -> None:
+        """Load from dict."""
+        self.data = d.get("data", "---------")
         return
 
     def copy(self) -> "Board":

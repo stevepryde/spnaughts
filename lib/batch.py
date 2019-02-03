@@ -39,6 +39,7 @@ class Batch(GameContext):
         self.bot_config = self.batch_config.get("bot_config", {})
         self.batch_size = self.batch_config.get("batch_size", 1)
         self.stop_on_loss = self.batch_config.get("stop_on_loss", False)
+        self.magic = self.batch_config.get("magic", False)
 
         self.label = ""
         # info is used by genetic.batchworker.
@@ -55,7 +56,10 @@ class Batch(GameContext):
     def run_batch(self) -> GameResult:
         """Run this batch and return the average scores."""
         self.start_batch()
-        self.run_normal_batch()
+        if self.magic:
+            self.run_magic_batch()
+        else:
+            self.run_normal_batch()
         return self.process_batch_result()
 
     def start_batch(self) -> None:
@@ -71,7 +75,7 @@ class Batch(GameContext):
         self.num_draws = 0
         return
 
-    def process_game_result(self, game_num: int, result: GameResult) -> None:
+    def process_game_result(self, result: GameResult) -> None:
         """Process the result of a single game."""
         self.num_games_played += 1
 
@@ -123,5 +127,33 @@ class Batch(GameContext):
             bots = BotFactory(self, bot_config=self.bot_config).clone_bots(self.bots)
             game_obj.start(bots)
             result = game_obj.run()
-            self.process_game_result(game_num, result)
+            self.process_game_result(result)
+        return
+
+    def run_magic_batch(self) -> None:
+        """Run normal batch of games."""
+        start_game_obj = GameFactory(self).get_game_obj(self.game)
+        bots = BotFactory(self, bot_config=self.bot_config).clone_bots(self.bots)
+
+        start_game_obj.start(bots)
+        start_game_state = start_game_obj.to_dict()
+        game_stack = collections.deque([start_game_state])
+
+        count = 1
+        self.log.info("\n********** Running magic game {} **********\n".format(count))
+        while game_stack:
+            state = game_stack.popleft()
+            game_obj = GameFactory(self).get_game_obj(self.game)
+            game_obj.set_bots(bots)
+            game_obj.from_dict(state)
+            if game_obj.is_ended():
+                result = game_obj.process_result()
+                self.process_game_result(result)
+            else:
+                output_states = game_obj.do_turn()
+                for output_state in output_states:
+                    count += 1
+                    self.log.info("\n********** Running game split {} **********\n".format(count))
+                    game_stack.append(output_state)
+
         return

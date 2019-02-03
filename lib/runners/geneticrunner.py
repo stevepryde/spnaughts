@@ -34,12 +34,14 @@ class GeneticRunner(GameRunnerBase):
                 )
                 self.db = None
 
+        self.use_rabbit = config.use_rabbit
+
         self.bots = []  # type: List[GamePlayer]
         self.genetic_bot_index = 0
         self.genetic_index = 0
         self.genetic_name = ""
         self.bot_factory = BotFactory(context=self, bot_config=self.config.get_bot_config())
-        self.rabbit = RabbitManager()
+        self.rabbit = RabbitManager() if self.use_rabbit else None
         return
 
     def setup(self) -> None:
@@ -77,13 +79,23 @@ class GeneticRunner(GameRunnerBase):
         selected_samples = []  # type: List[GamePlayer]
         score_threshold = -999.0  # This will be reset after first round.
 
-        processor = ProcessorRabbit(
-            context=self,
-            other_bot=other_bot,
-            genetic_index=self.genetic_index,
-            batch_config=self.config.get_batch_config(),
-            rabbit=self.rabbit,
-        )
+        if self.rabbit and self.rabbit.enabled:
+            processor = ProcessorRabbit(
+                context=self,
+                other_bot=other_bot,
+                genetic_index=self.genetic_index,
+                batch_config=self.config.get_batch_config(),
+                rabbit=self.rabbit,
+            )
+            self.log.info("Using RabbitMQ processor")
+        else:
+            processor = ProcessorMP(  # type: ignore
+                context=self,
+                other_bot=other_bot,
+                genetic_index=self.genetic_index,
+                batch_config=self.config.get_batch_config(),
+            )
+            self.log.info("Using MP processor")
 
         for gen in range(self.config.num_generations):
             self.log.info("--------------------------")

@@ -27,15 +27,13 @@ class SingleGame(GameBase):
 
     def set_state(self, state: Dict[str, Any]) -> None:
         """Apply state to this game object."""
-        super().set_state(state)
-        self.game_board = state.get("board", Board())
+        self.game_board = Board()
+        self.game_board.from_dict(state.get("board", {}))
         return
 
     def get_state(self) -> Dict[str, Any]:
         """Get the game state."""
-        state = super().get_state()
-        state.update({"board": self.game_board})
-        return state
+        return {"board": self.game_board.to_dict()}
 
     def get_inputs(self, identity: str) -> Tuple[List[float], List[float]]:
         """Convert current game state into a list of player-specific inputs."""

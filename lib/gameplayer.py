@@ -22,6 +22,9 @@ class GamePlayer(GameContext):
         self.identity = ""
         self._score = None  # type: Optional[float]
         self.genetic = False
+
+        # The magic flag is True for bots that use the magic batch runner (e.g. omnibot)
+        self.magic = False
         self.data = {}  # type: Dict[str, Any]
         self.name = ""
         return
@@ -99,3 +102,7 @@ class GamePlayer(GameContext):
     def process(self, inputs: List[float], available_moves: List[float]) -> float:
         """Process one game turn."""
         return 0.0
+
+    def process_magic(self, inputs: List[float], available_moves: List[float]) -> List[float]:
+        """Process one game turn."""
+        return [0.0]
