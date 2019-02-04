@@ -1,6 +1,6 @@
 """Game Runner for the genetic algorithm."""
 
-
+import itertools
 import json
 import os
 import time
@@ -35,6 +35,7 @@ class GeneticRunner(GameRunnerBase):
                 self.db = None
 
         self.use_rabbit = config.use_rabbit
+        self.wild_samples = config.wild_samples
 
         self.bots = []  # type: List[GamePlayer]
         self.genetic_bot_index = 0
@@ -105,7 +106,12 @@ class GeneticRunner(GameRunnerBase):
             if selected_samples:
                 new_samples = self.generate_samples(selected_samples, gen)
             else:
-                new_samples = self.generate_original_samples(gen)
+                new_samples = self.generate_original_samples(gen, count=self.config.num_samples)
+
+            if self.wild_samples:
+                new_samples = itertools.chain(
+                    new_samples, self.generate_original_samples(gen, count=self.wild_samples)
+                )
 
             genetic_pool = []
             for batch_result in processor.run(
@@ -188,11 +194,11 @@ class GeneticRunner(GameRunnerBase):
                 yield bot_obj
         return
 
-    def generate_original_samples(self, generation: int) -> Iterator[GamePlayer]:
+    def generate_original_samples(self, generation: int, count: int) -> Iterator[GamePlayer]:
         """Generate samples from scratch."""
         # Start from scratch, just create random bots.
         class_ = GameFactory(self).get_game_class(self.config.game)
-        for _ in range(1, self.config.num_samples + 1):
+        for _ in range(1, count + 1):
             bot_obj = self.bot_factory.create_bot(self.genetic_name)
 
             if not bot_obj:

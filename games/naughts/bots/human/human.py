@@ -5,6 +5,8 @@ This allows manual games with human vs another bot.
 Not practical in batch mode or genetic mode.
 """
 
+from typing import Any
+
 from games.naughts.board import Board
 from games.naughts.bots.naughtsbot import NaughtsBot
 
@@ -32,3 +34,10 @@ class HUMAN(NaughtsBot):
                 pass
 
         return int(move)
+
+    def show_result(self, data: Any) -> None:
+        """Allow bot to see final result."""
+        if isinstance(data, Board):
+            print("\nGame over:")
+            data.show()
+        return

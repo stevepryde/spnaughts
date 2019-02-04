@@ -119,9 +119,8 @@ class Batch(GameContext):
 
     def run_normal_batch(self) -> None:
         """Run normal batch of games."""
-        for game_num in range(1, self.batch_size + 1):
-            self.log.info("\n********** Running game {} **********\n".format(game_num))
-
+        self.log.info("\n********** Running Batch **********\n")
+        for _ in range(1, self.batch_size + 1):
             game_obj = GameFactory(self).get_game_obj(self.game)
 
             bots = BotFactory(self, bot_config=self.bot_config).clone_bots(self.bots)

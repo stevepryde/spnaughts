@@ -106,3 +106,7 @@ class GamePlayer(GameContext):
     def process_magic(self, inputs: List[float], available_moves: List[float]) -> List[float]:
         """Process one game turn."""
         return [0.0]
+
+    def show_result(self, data: Any) -> None:
+        """Allow bot to see final result."""
+        return

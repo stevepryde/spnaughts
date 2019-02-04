@@ -72,6 +72,7 @@ class GameConfig:
         self.num_generations = 1
         self.num_samples = 1
         self.keep_samples = 1
+        self.wild_samples = 0
         self.botdb = False
         self.bot_id = None
         self.bot1 = ""
@@ -129,6 +130,12 @@ class GameConfig:
             help='Number of winning samples to "keep" (Requires --genetic)',
         )
         parser.add_argument(
+            "--wild",
+            type=check_int0plus,
+            help='Number of "wild" (fresh, randomly generated) samples to include '
+            "in each generation",
+        )
+        parser.add_argument(
             "--botdb", action="store_true", help="Enable storing and loading bots with BotDB"
         )
         parser.add_argument("--botid", action="store", help="Play against this bot id (genetic)")
@@ -146,9 +153,9 @@ class GameConfig:
             sys.exit(1)
 
         # Check argument dependencies.
-        requires_batch = ["genetic", "samples", "keep", "top"]
+        requires_batch = ["genetic", "samples", "keep", "top", "wild"]
 
-        requires_genetic = ["samples", "keep", "top"]
+        requires_genetic = ["samples", "keep", "top", "wild"]
 
         args_dict = vars(args)
         if not args.batch and not self.magic:
@@ -175,6 +182,10 @@ class GameConfig:
         if args.botdb:
             self.botdb = True
 
+        if args.botid:
+            self.bot_id = args.botid
+            self.botdb = True
+
         if self.magic or args.batch > 0:
             self.batch_size = int(args.batch) or 0
             self.batch_mode = True
@@ -191,9 +202,8 @@ class GameConfig:
                 if args.keep:
                     self.keep_samples = int(args.keep)
 
-                if args.botid:
-                    self.botdb = True
-                    self.bot_id = args.botid
+                if args.wild:
+                    self.wild_samples = int(args.wild)
         return
 
     def init_logging(self) -> None:

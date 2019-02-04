@@ -48,6 +48,10 @@ class NaughtsBot(GamePlayer):
         """Do one turn. Override in subclass."""
         return 0
 
+    def show_result(self, data: Any) -> None:
+        """Allow bot to see final result."""
+        return
+
     ##########################################################################
     # HELPER METHODS
     # These are methods that are probably generally useful to several bots.

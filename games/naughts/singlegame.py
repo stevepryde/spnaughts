@@ -77,6 +77,9 @@ class SingleGame(GameBase):
 
     def get_result(self) -> GameResult:
         """Process and return game result."""
+        for bot in self.bots:
+            bot.show_result(self.game_board)
+
         result = GameResult()
 
         assert len(self.bots) == 2, "BUG: bots have not been set up - was this game started?"

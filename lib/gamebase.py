@@ -181,4 +181,3 @@ class GameBase(GameContext):
     def get_result(self) -> GameResult:
         """Process and return game result."""
         return GameResult()
-

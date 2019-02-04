@@ -106,59 +106,86 @@ The interesting 'bots' included are as follows:
 
 ### Game-dependent bots (these will only run against naughts)
 
-- human
-  This one accepts input from STDIN, allowing you to play manual games against
+- human :: This one accepts input from STDIN, allowing you to play manual games against
   any other bot.
-- perfectbot
-  This was my first attempt at creating a bot that would never lose, based on
+- perfectbot :: This was my first attempt at creating a bot that would never lose, based on
   simple intuitive rules.
-- minimaxbot
-  A bot that uses the minimax algorithm (with alpha-beta optimisation). This
+- minimaxbot :: A bot that uses the minimax algorithm (with alpha-beta optimisation). This
   will always produce the optimal outcome, and is thus useful for benchmarking
   other bots.
-- genbot1
-  My first attempt at a genetic algorithm. It uses boolean logic nodes
+- genbot1 :: My first attempt at a genetic algorithm. It uses boolean logic nodes
   assembled at random. See the documentation in the python source file for
   a more detailed explanation of how it works.
-- genbotcontrol
-  Designed to appear identical to genbot1 but with the central logic replaced
+- genbotcontrol :: Designed to appear identical to genbot1 but with the central logic replaced
   by simple random move selection. This is used to compare against genbot1 to
   check that any improvement seen in genbot1 is actually real.
-- genbot2
-  This bot uses the same algorithm as genbot1, but without any additional rules
+- genbot2 :: This bot uses the same algorithm as genbot1, but without any additional rules
   or extra logic. Whereas genbot1 included specific hard-coded rules to
   automatically choose a winning or defensive move if one was available,
   genbot2 does not, and it is entirely driven by the AI. As you might expect,
   this makes it comparable to randombot in its initial state, but with the
-  right training it should be able to improve considerably. How much improvement
-  is possible is still yet to be determined.
-- omnibot
-  Omnibot is a special bot that, when combined with a magic batch runner,
+  right training it should be able to improve considerably. This bot has been
+  demonstrated to be capable of learning.
+- omnibot :: Omnibot is a special bot that, when combined with a magic batch runner,
   effectively produced a kind of british-museum algorithm for running every
   possible game against a bot. At each turn, the board is cloned once for
   every possible move, and the clones added to a stack. When the stack has
-  been fully processed, every possible game has been played.
-  Omnibot was deleted due to a recent refactor but the functionality it
-  provided will return in a future update.
+  been fully processed, every possible game has been played. This is the
+  best bot to use for training genetic bots, as it is fully deterministic.
+
+## TRAINING BOTS
+
+Currently the ideal way to train bots is to run them against the omnibot using
+the --magic option.
+
+The below command-line has produced a GenBot2 sample capable of winning against
+a randombot over 95% of the time, sometimes with 0 losses.
+
+For comparison, minimaxbot (the optimal algorithm) wins against randombot roughly
+99% of the time, always with 0 losses.
+
+    ./game_runner.py naughts.genbot2 omnibot --game naughts --magic --genetic 500 --samples 10 --keep 2 --wild 5 --botdb
+
+Let's look at the options used.
+
+- We are running the naughts.genbot2 against the generic omnibot.
+- --game naughts = Run the 'naughts and crosses' game. Currently this is the only game supported,
+  but others will be added in future.
+- --magic = Use the magic batch runner, which will play the genetic bot (in this case genbot2)
+  against every possible move.
+- --genetic 500 = Use the genetic algorithm runner for 500 generations.
+- --samples 10 = Generate 10 random samples for every sample we "keep". Actually it will keep the
+  winning samples and generate 9 random samples from each of them.
+- --keep 2 = Keep the 2 highest scoring samples from each generation.
+- --wild 5 = Add 5 "wild-card" (new, randomly generated) samples in each generation. This offers
+  some protection against reaching local maxima.
+- --botdb = If MongoDB is running, store the best bot recipes for replaying later. Always use
+  this option unless you are sure you don't want to keep any of the generated bots.
+
+The scoring system is arbitrary and will differ per game. Currently, naughts and crosses is
+scored as follows:
+
+- If you win, your score is 10 - number of turns.
+- If you draw, your score is 0 (NOTE: the number of turns is always the same for a draw)
+- If you lose, your score is 10 - number of turns, multiplied by -10.
+
+Note that losses are weighted 10x as heavily as wins, because minimizing the number of losses is
+a higher priority than maximizing the number of wins.
 
 ## FUTURE
 
 This project has recently undergone a major refactor to hopefully allow much
 more future expansion.
 
-Batches should now be much less dependent on bulky objects, to make way for
-better parallelism. I'd like to try pushing batches onto a queue and then
-processing them from a pool of machines, ideally docker containers. This will
-significantly improve processing performance and allow much larger sample
-sizes.
-
-Omnibot has been temporarily removed, but its functionality will be restored
-in a future update.
-
 Once I have a nice neural net bot that can learn and self-improve, the longer
 term goal is to implement more games. Connect four will be the obvious next
 choice. Nbot1 and randombot are now fully generic so hopefully they will work
 against future games without any modification to their code.
+
+I would like to put the games themselves online in the future, to allow
+anyone to play against the bots that are in training.
+
+Perhaps it will also be possible to adapt the algorigthms for other kinds of games.
 
 That's all for now.
 
