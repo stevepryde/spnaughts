@@ -4,7 +4,7 @@ import itertools
 import json
 import os
 import time
-from typing import Callable, Iterator, List, Optional
+from typing import Callable, Iterator, List, Optional, Tuple
 
 from lib.botfactory import BotFactory
 from lib.gameconfig import GameConfig
@@ -78,6 +78,7 @@ class GeneticRunner(GameRunnerBase):
             return
 
         selected_samples = []  # type: List[GamePlayer]
+        last_scores = []  # type: List[Tuple[str, float]]
         score_threshold = -999.0  # This will be reset after first round.
 
         if self.rabbit and self.rabbit.enabled:
@@ -126,18 +127,34 @@ class GeneticRunner(GameRunnerBase):
                 if sample.score > score_threshold:
                     win = "*"
 
-                self.log.info(
+                self.log.debug(
                     "Completed batch for sample {:5d} :: score = {:.3f} {}".format(
                         batch_result["sample"], sample.score, win
                     )
                 )
 
             # Sort the pool based on score, in descending order.
-            sorted_pool = sorted(genetic_pool, key=lambda bot: bot.score, reverse=True)
+            filtered_pool = list(filter(lambda bot: bot.score > score_threshold, genetic_pool))
+
+            if not filtered_pool:
+                self.log.info(
+                    "Generation {} :: No improvement - will generate more samples".format(gen)
+                )
+                for bot_id, score in last_scores:
+                    self.log.info("SCORE {} :: {}".format(score, bot_id))
+                continue
+
+            pool_count = len(filtered_pool)
+            sample_count = len(selected_samples)
+            if pool_count < sample_count:
+                filtered_pool.extend(selected_samples[: sample_count - pool_count])
+
+            sorted_pool = sorted(filtered_pool, key=lambda bot: bot.score, reverse=True)
 
             selected_samples = self.select_samples(sorted_pool)
 
             selected_scores = []
+            last_scores = []
             for sample in selected_samples:
                 # Check if this is one of the top for this bot.
                 bot_name = self.bots[self.genetic_index].name
@@ -152,6 +169,7 @@ class GeneticRunner(GameRunnerBase):
                 if self.db:
                     bot_id = self.db.insert_bot(bot_name, sample.to_dict(), score)
                     self.log.info("SCORE {} :: {}".format(score, bot_id))
+                    last_scores.append((bot_id, score))
 
             self.log.info(
                 "Generation {} highest scores: [{}]".format(gen, ", ".join(selected_scores))

@@ -2,8 +2,6 @@
 Base class for AI naughts and crosses bots.
 
 All bots must implement do_turn().
-Bots can optionally implement setup() and process_game_result().
-Genetic bots can also optionally implement process_batch_result().
 """
 
 
@@ -30,18 +28,19 @@ class NaughtsBot(GamePlayer):
 
     def process(self, inputs: List[float], available_moves: List[float]) -> Any:
         """Process one game turn."""
-        assert len(inputs) == 9, "BUG: Invalid number of inputs for naughts game: {}".format(
+        assert len(inputs) == 18, "BUG: Invalid number of inputs for naughts game: {}".format(
             len(inputs)
         )
 
         board = Board()
-        for pos, x in enumerate(inputs):
-            value = " "
+        for pos, x in enumerate(inputs[:9]):
             if x > 0.0:
-                value = self.identity
-            elif x < 0.0:
-                value = self.other_identity
-            board.setat(pos, value)
+                board.setat(pos, self.identity)
+
+        for pos, x in enumerate(inputs[9:]):
+            if x > 0.0:
+                board.setat(pos, self.other_identity)
+
         return float(self.do_turn(board))
 
     def do_turn(self, current_board: Board) -> int:

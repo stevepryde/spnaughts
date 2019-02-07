@@ -17,7 +17,7 @@ from lib.globals import log_critical
 # All system logs go here.
 LOG_BASE_PATH = "logs"
 DATA_BASE_PATH = "data"
-SUPPORTED_GAMES = ["naughts"]
+SUPPORTED_GAMES = ["naughts", "connect4"]
 
 
 def quit_game(message: str = "Exiting...") -> None:

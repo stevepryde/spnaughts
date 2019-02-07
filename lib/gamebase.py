@@ -20,6 +20,7 @@ class GameBase(GameContext):
 
     identities = ("1", "2")
     input_count = 0  # This MUST be overridden by subclass.
+    output_count = 0  # This MUST be overridden by subclass.
 
     def __init__(self) -> None:
         """Create a new GameBase object."""
@@ -32,7 +33,7 @@ class GameBase(GameContext):
     @classmethod
     def get_game_info(cls) -> Dict[str, Any]:
         """Get game info."""
-        return {"input_count": cls.input_count}
+        return {"input_count": cls.input_count, "output_count": cls.output_count}
 
     @property
     def current_identity(self) -> str:

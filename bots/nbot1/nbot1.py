@@ -6,7 +6,7 @@ import random
 from typing import Any, Dict, List
 
 from lib.gameplayer import GamePlayer
-from .neurons import InputNeuron, Neuron, NeuronLayer
+from .neurons import InputNeuron, Neuron, NeuronLayer, sigmoid
 
 
 class NBot1(GamePlayer):
@@ -18,7 +18,8 @@ class NBot1(GamePlayer):
         self.genetic = True
         self.input_nodes = []
         self.layers = []
-        self.nodes_per_layer = 50
+        self.nodes_per_layer = 9
+        self.num_layers = 4
         self.created = False
         return
 
@@ -52,7 +53,7 @@ class NBot1(GamePlayer):
             self.input_nodes.append(InputNeuron())
 
         prev_layer_nodes = self.input_nodes
-        for _ in range(5):
+        for _ in range(self.num_layers):
             layer = NeuronLayer.generate(
                 num_nodes=self.nodes_per_layer, parent_nodes=prev_layer_nodes
             )
@@ -60,7 +61,9 @@ class NBot1(GamePlayer):
             prev_layer_nodes = layer.nodes
 
         # Output layer.
-        layer = NeuronLayer.generate(num_nodes=9, parent_nodes=prev_layer_nodes)
+        layer = NeuronLayer.generate(
+            num_nodes=game_info.get("output_count", 1), parent_nodes=prev_layer_nodes
+        )
         self.layers.append(layer)
 
         # And we're done.
@@ -97,9 +100,10 @@ class NBot1(GamePlayer):
             node = random.choice(layer.nodes)
             if random.choice(["weight", "bias"]) == "weight":
                 i = random.randint(0, len(node.input_weights) - 1)
-                node.input_weights[i] += (random.random() * 0.2) - 0.1
+                node.input_weights[i] = sigmoid((random.random() * 2.0) - 1.0)
             else:
-                node.bias += (random.random() * 0.2) - 0.1
+                node.bias = sigmoid((random.random() * 2.0) - 1.0)
+
         return self
 
     def process(self, inputs: List[float], available_moves: List[float]) -> float:

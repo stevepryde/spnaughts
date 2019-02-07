@@ -17,6 +17,7 @@ class SingleRunner(GameRunnerBase):
         bots = BotFactory(context=self, bot_config=self.config.get_bot_config()).create_bots()
 
         game_obj = GameFactory(self).get_game_obj(self.config.game)
+        game_obj.set_initial_state()
         game_obj.start(bots)
         result = game_obj.run()
         self.log.info(str(result))

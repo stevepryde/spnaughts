@@ -18,7 +18,7 @@ DEFAULT_LOG_NAME = "log"
 
 COLOURS = {
     "trace": "yellow",
-    "debug": "orange",
+    "debug": "yellow",
     "info": "green",
     "warning": "cyan",
     "error": "magenta",
@@ -46,8 +46,8 @@ class LogHandler:
     def __init__(self) -> None:
         """
         Create new LogHandler object.
-        
-        By default the LogHandler does no logging. 
+
+        By default the LogHandler does no logging.
         All calls to log functions are no-ops.
         To enable logging, call log_to_file() or log_to_console().
         """

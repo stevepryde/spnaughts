@@ -36,11 +36,11 @@ class Neuron:
     def generate(parent_nodes):
         """Generate new Neuron."""
         n = Neuron()
-        n.bias = 0  # (random.random() * 0.2) - 0.1
+        n.bias = sigmoid((random.random() * 0.2) - 0.1)
         n.input_nodes = list(parent_nodes)
 
         for _ in range(len(parent_nodes)):
-            w = 0  # (random.random() * 2.0) - 1.0
+            w = sigmoid((random.random() * 2.0) - 1.0)
             n.input_weights.append(w)
         return n
 
