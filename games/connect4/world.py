@@ -110,7 +110,12 @@ class World:
                     continue
 
                 # Start search. Note that we only need to search to the right, up, and both upward diagonals.
-                if d[row][col + 1 : col + 4] == c * 4:
+                if (
+                    col < 4
+                    and d[row][col + 1] == c
+                    and d[row][col + 2] == c
+                    and d[row][col + 3] == c
+                ):
                     return 1 if c == "X" else 2
 
                 # Up
