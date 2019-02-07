@@ -57,7 +57,7 @@ class GenBot3(GamePlayer):
             self.nodes.append(nodes.NODE_INPUT())
 
         # Now generate random nodes.
-        num_nodes = 100
+        num_nodes = 200
         for n in range(num_nodes):
             # Create a random node.
             node = self.get_random_node_instance()
@@ -146,20 +146,7 @@ class GenBot3(GamePlayer):
         for p, input_value in enumerate(inputs):
             self.nodes[p].set_value(input_value)
 
-        # ENGAGE BRAIN
-        # Populate input nodes with the current board state.
-        # for p in range(9):
-        #     self.nodes[p].set_value(current_board.getat(p) == " ")
-
-        # my_id = self.identity
-        # for p in range(9):
-        #     self.nodes[p + 9].set_value(current_board.getat(p) == my_id)
-
-        # their_id = self.other_identity
-        # for p in range(9):
-        #     self.nodes[p + 18].set_value(current_board.getat(p) == their_id)
-
-        # Now process the brain.
+        # ENGAGE BRAIN.
         for index in range(len(inputs), len(self.nodes)):
             self.nodes[index].update()
 
