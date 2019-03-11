@@ -57,7 +57,7 @@ class GenBot3(GamePlayer):
             self.nodes.append(nodes.NODE_INPUT())
 
         # Now generate random nodes.
-        num_nodes = 200
+        num_nodes = 100
         for n in range(num_nodes):
             # Create a random node.
             node = self.get_random_node_instance()

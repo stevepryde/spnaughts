@@ -15,8 +15,6 @@ from lib.runners.genetic.processor import Processor, ProcessorMP, ProcessorRabbi
 from lib.runners.genetic.rabbit import RabbitManager
 from lib.support.botdb import BotDB, ConnectionFailure
 
-MAX_SCORE = 7.0
-
 
 class GeneticRunner(GameRunnerBase):
     """Genetic Runner. This is the main genetic algorithm."""

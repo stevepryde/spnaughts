@@ -59,19 +59,10 @@ class Processor:
             genetic_score = batch_result.get_score(genetic_identity)
             batch.info["genetic_score"] = genetic_score
 
-            win = ""
-            if genetic_score > score_threshold:
-                win = "*"
-
-            print(
-                "Completed batch for sample {:5d} :: score = {:.3f} {}".format(
-                    batch.info["sample"], genetic_score, win
-                )
-            )
-
             yield {
                 "bot_data": batch.bots[self.genetic_index].to_dict(),
                 "genetic_score": genetic_score,
+                "sample": index,
             }
         return
 
