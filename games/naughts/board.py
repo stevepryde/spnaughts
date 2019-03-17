@@ -123,14 +123,14 @@ class Board:
             elif val == "OOO":
                 return 2
 
-            is_draw = True
-            for pos in range(9):
-                val = self.getat(pos)
-                if val != "X" and val != "O":
-                    is_draw = False
+        is_draw = True
+        for pos in range(9):
+            val = self.getat(pos)
+            if val != "X" and val != "O":
+                is_draw = False
 
-            if is_draw:
-                return 3
+        if is_draw:
+            return 3
         return 0
 
     def is_ended(self) -> bool:
