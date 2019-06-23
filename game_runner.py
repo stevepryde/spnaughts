@@ -3,6 +3,7 @@
 
 import os
 import random
+import time
 from typing import Optional
 
 from lib.errors import BotCreateError, GameCreateError
@@ -28,7 +29,10 @@ if __name__ == "__main__":
             print("Using SINGLE game runner")
             runner = singlerunner.SingleRunner(config=config)
 
+        start_time = time.monotonic()
         runner.run()
+        elapsed = time.monotonic() - start_time
+        runner.log.info("Completed in {:.3f} seconds.".format(elapsed))
     except BotCreateError as e:
         quit_game("ERROR: Could not create bot: {}".format(e))
     except GameCreateError as e:
