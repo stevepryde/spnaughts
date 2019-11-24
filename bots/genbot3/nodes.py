@@ -106,7 +106,7 @@ class NODE_OUTPUT(NodeBase):
     def __init__(self):
         """Create output node."""
         super().__init__()
-        self.num_inputs = 10  # Some number greater than 9.
+        self.num_inputs = 20  # Some number greater than 9.
         return
 
     def process(self, inputs):

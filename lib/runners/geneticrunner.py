@@ -89,6 +89,7 @@ class GeneticRunner(GameRunnerBase):
             )
             self.log.info("Using RabbitMQ processor")
         else:
+            # TODO: automatically choose between SP and MP processors depending on batch size?
             processor = ProcessorMP(  # type: ignore
                 context=self,
                 other_bot=other_bot,
@@ -138,6 +139,7 @@ class GeneticRunner(GameRunnerBase):
                 self.log.info(
                     "Generation {} :: No improvement - will generate more samples".format(gen)
                 )
+                self.log.info("Current best score: {:.3f}".format(score_threshold))
                 for bot_id, score in last_scores:
                     self.log.info("SCORE {} :: {}".format(score, bot_id))
                 continue
@@ -159,7 +161,7 @@ class GeneticRunner(GameRunnerBase):
 
                 score = sample.score
                 if score > score_threshold:
-                    score_threshold = score
+                    score_threshold += (score - score_threshold) * 0.2  # = score
 
                 selected_scores.append("{:.3f}".format(score))
 

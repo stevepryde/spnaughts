@@ -18,7 +18,7 @@ class NBot1(GamePlayer):
         self.genetic = True
         self.input_nodes = []
         self.layers = []
-        self.nodes_per_layer = 9
+        self.nodes_per_layer = 9 * 4
         self.num_layers = 4
         self.created = False
         return
@@ -100,9 +100,19 @@ class NBot1(GamePlayer):
             node = random.choice(layer.nodes)
             if random.choice(["weight", "bias"]) == "weight":
                 i = random.randint(0, len(node.input_weights) - 1)
-                node.input_weights[i] = sigmoid((random.random() * 2.0) - 1.0)
+                node.input_weights[i] += (random.random() * 0.2) - 0.1
+                # if node.input_weights[i] < -2.0:
+                #     node.input_weights[i] = -2.0 + (random.random() * 0.2)
+                # elif node.input_weights[i] > 2.0:
+                #     node.input_weights[i] = 2.0 - (random.random() * 0.2)
+                node.input_weights[i] = sigmoid(node.input_weights[i])
             else:
-                node.bias = sigmoid((random.random() * 2.0) - 1.0)
+                # node.bias += (random.random() * 0.2) - 0.1
+                # if node.bias < -2.0:
+                #     node.bias = -2.0 + (random.random() * 0.2)
+                # elif node.bias > 2.0:
+                #     node.bias = 2.0 - (random.random() * 0.2)
+                node.bias = sigmoid(node.bias)
 
         return self
 

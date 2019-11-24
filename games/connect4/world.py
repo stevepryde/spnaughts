@@ -98,6 +98,7 @@ class World:
             2 = O win.
             3 = draw.
         """
+        # Oops - this is a bug! suppose the last move is a win!
         if " " not in self.data[6]:
             return 3
 

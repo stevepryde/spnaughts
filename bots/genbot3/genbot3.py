@@ -53,21 +53,25 @@ class GenBot3(GamePlayer):
         self.output_nodes = []
 
         # First create input nodes.
-        for _ in range(game_info.get("input_count", 1)):
-            self.nodes.append(nodes.NODE_INPUT())
+        for n in range(game_info.get("input_count", 1)):
+            node = nodes.NODE_INPUT()
+            node.index = n
+            self.nodes.append(node)
 
         # Now generate random nodes.
         num_nodes = 100
+        next_index = len(self.nodes)
         for n in range(num_nodes):
             # Create a random node.
             node = self.get_random_node_instance()
-            node.index = n
+            node.index = next_index
 
             # Connect up a random sample of input nodes.
             node.input_nodes = random.sample(self.nodes, node.num_inputs)
 
             # Add this node.
             self.nodes.append(node)
+            next_index += 1
 
         # Now add output nodes.
         for _ in range(game_info.get("output_count", 1)):
@@ -107,8 +111,25 @@ class GenBot3(GamePlayer):
                 node_index += 1
         return
 
+    def mutate_output_node(self):
+        """Mutate output node."""
+        node_indexes = []
+        for index, node in enumerate(self.nodes):
+            if not node.input_nodes:
+                continue
+            node_indexes.append(index)
+
+        node = random.choice(self.output_nodes)
+        index = random.randint(0, len(node.input_nodes) - 1)
+        node.input_nodes[index] = self.nodes[random.choice(node_indexes)]
+        return
+
     def mutate(self):
         """Mutate the bot."""
+        if random.choice([0, 1]):
+            self.mutate_output_node()
+            return
+
         mutable_node_indexes = []
         for index, node in enumerate(self.nodes):
             if not node.input_nodes:
@@ -154,13 +175,13 @@ class GenBot3(GamePlayer):
         for node in self.output_nodes:
             node.update()
 
-        # Now sort moves according to the value of the output nodes.
-        dsort = {}
-        for move in available_moves:
-            dsort[move] = self.output_nodes[move].output
+        # Get best move.
+        best_move = available_moves[0]
+        best_output = 0
+        for m in available_moves:
+            if self.output_nodes[m].output > best_output:
+                best_move = m
+                best_output = self.output_nodes[m].output
 
-        sorted_moves = sorted(dsort, key=dsort.__getitem__, reverse=True)
-        selected_move = int(sorted_moves[0])
-
-        return selected_move
+        return best_move
         # END OF BRAIN ENGAGEMENT

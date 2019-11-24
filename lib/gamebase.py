@@ -28,6 +28,7 @@ class GameBase(GameContext):
         self.bots = []  # type: List[GamePlayer]
         self.num_turns = {}  # type: Dict[str, int]
         self.current_bot_index = 0
+        self.disqualified = ""
         return
 
     @classmethod
@@ -92,6 +93,8 @@ class GameBase(GameContext):
             # then revert back to the current state.
             cur_state = self.to_dict()
             for output in outputs:
+                if output not in available_moves:
+                    self.disqualified = self.current_identity
                 self.update(self.current_identity, output)
                 self.current_bot_index += 1
                 if self.current_bot_index >= len(self.bots):
@@ -101,31 +104,47 @@ class GameBase(GameContext):
                 self.from_dict(cur_state)
         else:
             output = bot.process(inputs, available_moves)
-            self.update(self.current_identity, output)
+            if output not in available_moves:
+                self.disqualified = self.current_identity
+            else:
+                self.update(self.current_identity, output)
 
-            self.current_bot_index += 1
-            if self.current_bot_index >= len(self.bots):
-                self.current_bot_index = 0
+                self.current_bot_index += 1
+                if self.current_bot_index >= len(self.bots):
+                    self.current_bot_index = 0
             output_states.append(copy.deepcopy(self.to_dict()))
         return output_states
 
     def process_result(self) -> GameResult:
         """Process and return the game result."""
         # Get scores and update bots.
-        result = self.get_result()
+        if self.disqualified:
+            result = GameResult()
+            for identity in self.identities:
+                result.set_score(identity, 0)
+
+            # Override disqualified player's score.
+            result.set_win()
+            result.set_score(self.disqualified, -999)
+        else:
+            result = self.get_result()
         for i, bot in enumerate(self.bots):
             bot.score = result.get_score(self.identities[i])
         return result
 
     def run(self) -> GameResult:
         """Run this game and return the result."""
-        while not self.is_ended():
+        while not self.is_ended() and not self.disqualified:
             self.do_turn()
         return self.process_result()
 
     def to_dict(self, include_bots: bool = False) -> Dict[str, Any]:
         """Convert game state to dict. Subclasses should override get_state() instead."""
-        state = {"num_turns": self.num_turns, "current_bot_index": self.current_bot_index}
+        state = {
+            "num_turns": self.num_turns,
+            "current_bot_index": self.current_bot_index,
+            "disqualified": self.disqualified,
+        }
         if include_bots:
             bot_state = {}
 
@@ -141,6 +160,7 @@ class GameBase(GameContext):
         """Set state from dict. Subclasses should override set_state() instead."""
         self.num_turns = copy.deepcopy(state.get("num_turns", {}))
         self.current_bot_index = state.get("current_bot_index", 0)
+        self.disqualified = state.get("disqualified", "")
         if include_bots:
             bot_state = copy.deepcopy(state.get("bots", {}))
 
